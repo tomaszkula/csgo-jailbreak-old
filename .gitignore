@@ -1,0 +1,5 @@
+*.smx
+*.exe
+
+*.inc
+!jail_go.inc

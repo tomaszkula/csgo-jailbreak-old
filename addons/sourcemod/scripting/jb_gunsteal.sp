@@ -8,7 +8,7 @@
 #define PLUGIN_VERSION "1.0.0"
 
 #define STEAL_DISTANCE 80.0
-#define STEAL_CHANCE 1.0
+#define STEAL_CHANCE 0.4
 #define STEAL_COOLDOWN 180
 
 int g_iStealCooldown[MAXPLAYERS + 1];
@@ -136,7 +136,8 @@ public Action StealCmd(int iClient, int args)
 			}
 			else
 			{
-				JB_AddRebel(iClient);
+				if(!JB_IsRebel(iClient))
+					JB_AddRebel(iClient);
 				PrintToChat(iClient, "%s Kradzież broni strażnikowi \x0b%s \x01zakończona niepowodzeniem. Jesteś buntownikiem!", JB_PREFIX, szTargetName);
 			}
 			
@@ -147,7 +148,7 @@ public Action StealCmd(int iClient, int args)
 		}
 	}
 	else
-		PrintToChat(iClient, "%s Musisz podejść bliżej, by ukraść broń.", JB_PREFIX);
+		PrintToChat(iClient, "%s Musisz podejść bliżej, by ukraść broń strażnikowi.", JB_PREFIX);
 	
 	return Plugin_Continue;
 }

@@ -125,5 +125,5 @@ public Action PaintCmd(int iClient, int args)
 		g_bIsPainting[iClient] = false;
 	}
 	
-	return Plugin_Handled;
+	return Plugin_Continue;
 }

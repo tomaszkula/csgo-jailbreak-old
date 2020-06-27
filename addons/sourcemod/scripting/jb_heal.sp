@@ -27,8 +27,6 @@ public void OnPluginStart()
 {
 	HookEvent("round_end", RoundEndEvent);
 	HookEvent("player_death", PlayerDeathEvent);
-	
-	RegConsoleCmd("jb_heal_menu", HealMenuCmd);
 }
 
 public void OnMapStart()
@@ -68,13 +66,6 @@ public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcas
 	return Plugin_Continue;
 }
 
-public Action HealMenuCmd(int iClient, int args)
-{
-	JB_DisplayHealMenu(iClient);
-	
-	return Plugin_Handled;
-}
-
 public int HealMenuHandler(Menu menu, MenuAction action, int iClient, int param2)
 {
 	switch(action)
@@ -87,7 +78,7 @@ public int HealMenuHandler(Menu menu, MenuAction action, int iClient, int param2
 			char szInfo[MAX_TEXT_LENGTH];
 			menu.GetItem(param2, szInfo, sizeof(szInfo)); 
 			int iTarget = StringToInt(szInfo);
-			if(!IsUserValid(iTarget) || !IsPlayerAlive(iTarget) || GetClientTeam(iTarget) != CS_TEAM_T || GetClientHealth(iTarget) >= 100)
+			if(!IsUserValid(iTarget) || !IsPlayerAlive(iTarget) || GetClientTeam(iTarget) != CS_TEAM_T || JB_HasFreeDay(iTarget) || JB_IsRebel(iTarget) || GetClientHealth(iTarget) >= 100)
 			{
         		JB_DisplayHealMenu(iClient);
         		return -1;
@@ -125,7 +116,7 @@ public int DisplayHealMenu(Handle plugin, int argc)
 	char szItemInfo[MAX_TEXT_LENGTH], szItemTitle[MAX_TEXT_LENGTH];
 	for(int i = 1; i <= MaxClients; i++)
 	{
-    	if(!IsUserValid(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_T || GetClientHealth(i) >= 100)
+    	if(!IsUserValid(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_T || JB_HasFreeDay(i) || JB_IsRebel(i) || GetClientHealth(i) >= 100)
         	continue;
         
         char szTargetName[MAX_TEXT_LENGTH];

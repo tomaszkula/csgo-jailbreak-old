@@ -7,11 +7,11 @@
 #define PLUGIN_DESCRIPTION ""
 #define PLUGIN_VERSION "1.0.0"
 
+char g_szColors[][MAX_TEXT_LENGTH] = {"255 255 0", "255 0 255", "0 255 255", "255 255 255"}
+char g_szColorsNames[][MAX_TEXT_LENGTH] = {"żółty", "różowy", "aqua", "biały"}
+
 bool g_bHasAccess[MAXPLAYERS + 1], g_bIsDivided[MAXPLAYERS + 1];
 int g_iGlowEntity[MAXPLAYERS + 1];
-
-char g_szTeamsColors[][MAX_TEXT_LENGTH] = {"255 255 0", "255 0 255", "0 255 255", "255 255 255"}
-char g_szTeamsColorsNames[][MAX_TEXT_LENGTH] = {"żółty", "różowy", "aqua", "biały"}
 
 public Plugin myinfo = 
 {
@@ -34,8 +34,6 @@ public void OnPluginStart()
 {
 	HookEvent("round_end", RoundEndEvent);
 	HookEvent("player_death", PlayerDeathEvent);
-	
-	RegConsoleCmd("jb_divide_menu", DivideMenuCmd);
 }
 
 public void OnMapStart()
@@ -63,6 +61,18 @@ public void OnRemoveSimon(int iClient)
 	g_bHasAccess[iClient] = false;
 }
 
+public void OnAddFreeDay(int iClient)
+{
+	if(JB_IsDivided(iClient))
+		JB_RemoveDivision(iClient);
+}
+
+public void OnAddRebel(int iClient)
+{
+	if(JB_IsDivided(iClient))
+		JB_RemoveDivision(iClient);
+}
+
 public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	for (int i = 1; i <= MaxClients; i++)
@@ -78,17 +88,11 @@ public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcas
 {
 	int iVictim = GetClientOfUserId(event.GetInt("userid"));
 	g_bHasAccess[iVictim] = false;
+	
 	if(JB_IsDivided(iVictim))
 		JB_RemoveDivision(iVictim);
 		
 	return Plugin_Continue;
-}
-
-public Action DivideMenuCmd(int iClient, int args)
-{
-	JB_DisplayDivideMenu(iClient);
-	
-	return Plugin_Handled;
 }
 
 public int DivideMenuHandler(Menu menu, MenuAction action, int iClient, int param2)
@@ -102,18 +106,9 @@ public int DivideMenuHandler(Menu menu, MenuAction action, int iClient, int para
 			
 			char szInfo[MAX_TEXT_LENGTH];
 			menu.GetItem(param2, szInfo, sizeof(szInfo)); 
-			int iTeamsCount = StringToInt(szInfo), count = 0;
-			for (int i = 1; i <= MaxClients; i++)
-			{
-				if(!IsUserValid(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_T || JB_HasFreeDay(i) || JB_IsRebel(i))
-        			continue;
-        			
-				if(JB_IsDivided(i))
-					JB_RemoveDivision(i);
-        		
-				JB_AddDivision(i, g_szTeamsColors[count % iTeamsCount]);
-				count++;
-			}
+			int iTeamsCount = StringToInt(szInfo);
+			
+			DividePrisoners(iTeamsCount);
 			
 			JB_DisplayDivideMenu(iClient);
 		}
@@ -125,6 +120,29 @@ public int DivideMenuHandler(Menu menu, MenuAction action, int iClient, int para
 	}
 	
 	return 0;
+}
+
+int DividePrisoners(int iTeamsCount)
+{
+	int iClients[MAXPLAYERS], iCount;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if(!IsUserValid(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_T || JB_HasFreeDay(i) || JB_IsRebel(i))
+			continue;
+			
+		iClients[iCount] = i;
+		iCount++;
+	}
+	
+	Permute(iClients, iCount);
+	
+	for (int i = 0; i < iCount; i++)
+	{
+		if(JB_IsDivided(iClients[i]))
+			JB_RemoveDivision(iClients[i]);
+		
+		JB_AddDivision(iClients[i], i % iTeamsCount);
+	}
 }
 
 /////////////////////////////////////////////////////////////
@@ -148,10 +166,12 @@ public int DisplayDivideMenu(Handle plugin, int argc)
 public int AddDivision(Handle plugin, int argc)
 {
 	int iClient = GetNativeCell(1);
-	char szColor[MAX_TEXT_LENGTH]; GetNativeString(2, szColor, sizeof(szColor));
+	int iColorType = GetNativeCell(2);
 	
 	g_bIsDivided[iClient] = true;
-	g_iGlowEntity[iClient] = RenderDynamicGlow(iClient, szColor);
+	g_iGlowEntity[iClient] = RenderDynamicGlow(iClient, g_szColors[iColorType]);
+	
+	PrintCenterText(iClient, "Twój kolor to : %s", g_szColorsNames[iColorType]);
 }
 
 public int RemoveDivision(Handle plugin, int argc)

@@ -10,11 +10,22 @@
 #define EF_PARENT_ANIMATES (1 << 9)
 #define EF_NORECEIVESHADOWS (1 << 6)
 
+enum
+{
+	ADD, REMOVE, BOTH
+}
+
 // Called when iClient got simon function
 forward void OnAddSimon(int iClient);
 
 // Called when iClient lost simon function
 forward void OnRemoveSimon(int iClient);
+
+// Called when iClient got freeday
+forward void OnAddFreeDay(int iClient);
+
+// Called when iClient came rebel
+forward void OnAddRebel(int iClient);
 
 // Returns day number
 native int JB_GetDay();
@@ -54,14 +65,8 @@ native void JB_DisplayBindCellButtonsMenu(int iClient);
 // Displays revive menu to a client
 native void JB_DisplayReviveMenu(int iClient);
 
-// Displays freeday menu to a client
-native void JB_DisplayFreeDayMenu(int iClient);
-
-// Displays heal menu to a client
-native void JB_DisplayHealMenu(int iClient);
-
-// Displays divide menu to a client
-native void JB_DisplayDivideMenu(int iClient);
+// Displays random menu to a client
+native void JB_DisplayRandomMenu(int iClient);
 
 // Open cells
 native void JB_OpenCells();
@@ -75,6 +80,9 @@ native void JB_RemoveFreeDay(int iClient, bool bSpawn = false);
 // Checks if client has freeday
 native void JB_HasFreeDay(int iClient);
 
+// Displays freeday menu to a client in mode
+native void JB_DisplayFreeDayMenu(int iClient, int iMode);
+
 // Adds rebel for client
 native void JB_AddRebel(int iClient);
 
@@ -84,14 +92,23 @@ native void JB_RemoveRebel(int iClient);
 // Checks if client is rebel
 native void JB_IsRebel(int iClient);
 
+// Displays rebel menu to a client in mode
+native void JB_DisplayRebelMenu(int iClient, int iMode);
+
 // Adds division for client
-native void JB_AddDivision(int iClient, char[] szColor);
+native void JB_AddDivision(int iClient, int iColorType);
 
 // Removes division for client
 native void JB_RemoveDivision(int iClient);
 
 // Checks if client is divided
 native void JB_IsDivided(int iClient);
+
+// Displays divide menu to a client
+native void JB_DisplayDivideMenu(int iClient);
+
+// Displays heal menu to a client
+native void JB_DisplayHealMenu(int iClient);
 
 stock bool CreateDirectories(const char[] path, int mode, bool use_valve_fs = false, const char[] valve_path_id = "DEFAULT_WRITE_PATH") {
 	char partialPathBuffer[PLATFORM_MAX_PATH];
@@ -252,4 +269,21 @@ stock Action SetTransmitSDKHook(int iEntity, int iClient)
 		return Plugin_Handled;
 		
 	return Plugin_Continue;
+}
+
+// Permutes array
+stock void Permute(int[] a, int length)
+{
+	int iRandom, iTemp;
+	int count = 0;
+	for (int i = 0; i < length - 1; i++)
+	{
+		iRandom = GetRandomInt(0, length - 1 - count);
+		
+		iTemp = a[iRandom];
+		a[iRandom] = a[length - 1 - count];
+		a[length - 1 - count] = iTemp;
+		
+		count++;
+	}
 }

@@ -18,7 +18,7 @@ public Plugin myinfo =
 	url = ""
 };
 
-public OnPluginStart()
+public void OnPluginStart()
 {
 	g_hClientInfoHud = CreateHudSynchronizer();
 	CreateTimer(0.2, UpdateClientInfoHud, _, TIMER_REPEAT);

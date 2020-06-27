@@ -7,8 +7,10 @@
 #define PLUGIN_DESCRIPTION ""
 #define PLUGIN_VERSION "1.0.0"
 
+#define RANDOMMENU_BLANK "blank"
 #define RANDOMMENU_REPEAT "repeat"
 #define RANDOMMENU_NOREPEAT "no_repeat"
+#define RANDOMMENU_NOREPEAT_RESET "no_repeat_reset"
 
 bool g_bHasAccess[MAXPLAYERS + 1], g_bIsRandom[MAXPLAYERS + 1];
 
@@ -122,6 +124,11 @@ public int RandomMenuHandler(Menu menu, MenuAction action, int iClient, int para
 					PrintCenterTextAll(" \x07Wylosowano %s", szRandomName);
 				}
 			}
+			else if(StrEqual(szInfo, RANDOMMENU_NOREPEAT_RESET))
+			{
+				for (int i = 1; i <= MaxClients; i++)
+					g_bIsRandom[i] = false;
+			}
 			
 			JB_DisplayRandomMenu(iClient);
 		}
@@ -169,7 +176,7 @@ public int DisplayRandomMenu(Handle plugin, int argc)
 	Menu menu = CreateMenu(RandomMenuHandler, MENU_ACTIONS_ALL);
 	menu.AddItem(RANDOMMENU_REPEAT, "Losuj z powtórzeniami");
 	menu.AddItem(RANDOMMENU_NOREPEAT, "Losuj bez powtórzeń");
-	//menu.AddItem("4", "4 drużyny");
+	menu.AddItem(RANDOMMENU_NOREPEAT_RESET, "Zresetuj powtórzenia");
 	menu.SetTitle("[Menu] Wylosuj więźnia");
 	menu.Display(iClient, MENU_TIME_FOREVER);
 }

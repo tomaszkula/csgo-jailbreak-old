@@ -68,6 +68,9 @@ native void JB_DisplayReviveMenu(int iClient);
 // Displays random menu to a client
 native void JB_DisplayRandomMenu(int iClient);
 
+// Displays mute menu to a client
+native void JB_DisplayMuteMenu(int iClient);
+
 // Open cells
 native void JB_OpenCells();
 
@@ -162,6 +165,28 @@ stock int JB_GetPrisonersCount(bool onlyAlive = false)
 	else prisonersCount = GetTeamClientCount(CS_TEAM_T);
 	
 	return prisonersCount;
+}
+
+/*
+ * Returns number of wardens
+ *
+ * @param onlyAlive     Do count only alive wardens
+ * @return              Number of wardens
+ */
+stock int JB_GetWardensCount(bool onlyAlive = false)
+{
+	int wardensCount = 0;
+	if(onlyAlive) 
+	{
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == CS_TEAM_CT)
+				wardensCount++;
+		}
+	}
+	else wardensCount = GetTeamClientCount(CS_TEAM_CT);
+	
+	return wardensCount;
 }
 
 // Returns random warden, 0 if not possible

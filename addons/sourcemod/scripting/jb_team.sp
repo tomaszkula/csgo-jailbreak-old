@@ -31,7 +31,9 @@ public void OnPluginStart()
 	AddCommandListener(JoinTeamCmd, "jointeam");
 	AddCommandListener(TeamMenuCmd, "xd");
 	AddCommandListener(TeamMenuCmd, "teammenu");
-	AddCommandListener(TeamMenuCmd, "teammenu1");
+	//AddCommandListener(TeamMenuCmd, "teammenu1");
+	
+	//RegConsoleCmd("teammenu", Command_Test);
 }
 
 public void OnMapStart()
@@ -74,8 +76,9 @@ public Action JoinTeamCmd(int iClient, const char[] command, int argc)
 public Action TeamMenuCmd(int iClient, const char[] command, int argc)
 {
 	DisplayTeamMenu(iClient);
+	PrintToConsole(iClient, "teammenu");
 	
-	return Plugin_Continue;
+	return Plugin_Changed;
 }
 
 public void DisplayTeamMenu(int iClient)

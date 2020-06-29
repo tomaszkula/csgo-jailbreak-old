@@ -8,7 +8,7 @@
 #define PLUGIN_VERSION "1.0.0"
 
 #define STEAL_DISTANCE 80.0
-#define STEAL_CHANCE 0.4
+#define STEAL_CHANCE 0.5
 #define STEAL_COOLDOWN 180
 
 int g_iStealCooldown[MAXPLAYERS + 1];
@@ -28,46 +28,43 @@ public void OnPluginStart()
 	HookEvent("round_end", RoundEndEvent);
 	HookEvent("player_death", PlayerDeathEvent);
 	
-	RegConsoleCmd("+steal", StealCmd);
-	RegConsoleCmd("+kradnij", StealCmd);
+	RegConsoleCmd("kradnij", StealCmd);
+	RegConsoleCmd("steal", StealCmd);
 }
 
 public void OnMapStart()
 {
 	for (int i = 1; i <= MaxClients; i++)
 	{
+		g_iStealCooldown[i] = 0;
 		if(g_hStealGunTimer[i] != INVALID_HANDLE)
 		{
 			KillTimer(g_hStealGunTimer[i]);
 			g_hStealGunTimer[i] = INVALID_HANDLE;
 	    }
-		
-		g_iStealCooldown[i] = 0;
 	}
 }
 
 public void OnClientDisconnect_Post(int iClient)
 {
+	g_iStealCooldown[iClient] = 0;
 	if(g_hStealGunTimer[iClient] != INVALID_HANDLE)
 	{
 		KillTimer(g_hStealGunTimer[iClient]);
 		g_hStealGunTimer[iClient] = INVALID_HANDLE;
     }
-	
-	g_iStealCooldown[iClient] = 0;
 }
 
 public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	for (int i = 1; i <= MaxClients; i++)
 	{
+		g_iStealCooldown[i] = 0;
 		if(g_hStealGunTimer[i] != INVALID_HANDLE)
 		{
 			KillTimer(g_hStealGunTimer[i]);
 			g_hStealGunTimer[i] = INVALID_HANDLE;
 	    }
-	    
-		g_iStealCooldown[i] = 0;
 	}
 	
 	return Plugin_Continue;
@@ -77,13 +74,12 @@ public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcas
 {
 	int iVictim = GetClientOfUserId(event.GetInt("userid"));
 	
+	g_iStealCooldown[iVictim] = 0;
 	if(g_hStealGunTimer[iVictim] != INVALID_HANDLE)
 	{
 		KillTimer(g_hStealGunTimer[iVictim]);
 		g_hStealGunTimer[iVictim] = INVALID_HANDLE;
     }
-	
-	g_iStealCooldown[iVictim] = 0;
 		
 	return Plugin_Continue;
 }

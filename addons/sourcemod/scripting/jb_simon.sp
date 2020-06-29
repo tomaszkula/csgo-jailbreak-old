@@ -12,7 +12,7 @@
 #define SIMONMENU_HEALMENU "heal_menu"
 #define SIMONMENU_DIVIDEMENU "divide_menu"
 #define SIMONMENU_FREEDAYMENU "freeday_menu"
-#define SIMONMENU_REBELMENU_REMOVE "rebel_menu_remove"
+#define SIMONMENU_REBELMENU "rebel_menu"
 
 GlobalForward g_OnAddSimonForward, g_OnRemoveSimonForward;
 int g_iSimon;
@@ -29,11 +29,11 @@ public Plugin myinfo =
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_max)
 {
+	CreateNative("JB_DisplaySimonMenu", DisplaySimonMenu);
 	CreateNative("JB_AddSimon", AddSimon);
 	CreateNative("JB_RemoveSimon", RemoveSimon);
 	CreateNative("JB_GetSimon", GetSimon);
 	CreateNative("JB_IsSimon", IsSimon);
-	CreateNative("JB_DisplaySimonMenu", DisplaySimonMenu);
 }
 
 public void OnPluginStart()
@@ -102,7 +102,7 @@ public int SimonMenuHandler(Menu menu, MenuAction action, int iClient, int param
 	{
 		case MenuAction_Select:
 		{
-			if(!JB_IsSimon(iClient))
+			if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
 				return -1;
 			
 			char szInfo[MAX_TEXT_LENGTH];
@@ -126,11 +126,11 @@ public int SimonMenuHandler(Menu menu, MenuAction action, int iClient, int param
 			}
 			else if(StrEqual(szInfo, SIMONMENU_FREEDAYMENU))
 			{
-				JB_DisplayFreeDayMenu(iClient, BOTH);
+				JB_DisplayFreeDayMenu(iClient);
 			}
-			else if(StrEqual(szInfo, SIMONMENU_REBELMENU_REMOVE))
+			else if(StrEqual(szInfo, SIMONMENU_REBELMENU))
 			{
-				JB_DisplayRebelMenu(iClient, REMOVE);
+				JB_DisplayRebelMenu(iClient);
 			}
 		}
 		
@@ -158,7 +158,8 @@ public int AddSimon(Handle plugin, int argc)
 	int iClient = GetNativeCell(1);
 	g_iSimon = iClient;
 	
-	JB_DisplayMainMenu(iClient);
+	if(IsUserValid(iClient))
+		FakeClientCommand(iClient, "menu");
 		
 	Call_StartForward(g_OnAddSimonForward);
 	Call_PushCell(iClient);
@@ -197,7 +198,7 @@ public int DisplaySimonMenu(Handle plugin, int argc)
 	menu.AddItem(SIMONMENU_HEALMENU, "Ulecz więźnia");
 	menu.AddItem(SIMONMENU_DIVIDEMENU, "Podziel więźniów");
 	menu.AddItem(SIMONMENU_FREEDAYMENU, "Daj/Zabierz FreeDay'a");
-	menu.AddItem(SIMONMENU_REBELMENU_REMOVE, "Zabierz buntownika");
+	menu.AddItem(SIMONMENU_REBELMENU, "Zabierz buntownika");
 	menu.SetTitle("[Menu] Prowadzący");
 	menu.Display(iClient, MENU_TIME_FOREVER);
 }

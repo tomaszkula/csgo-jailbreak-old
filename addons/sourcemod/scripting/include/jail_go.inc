@@ -10,11 +10,6 @@
 #define EF_PARENT_ANIMATES (1 << 9)
 #define EF_NORECEIVESHADOWS (1 << 6)
 
-enum
-{
-	ADD, REMOVE, BOTH
-}
-
 // Called when iClient got simon function
 forward void OnAddSimon(int iClient);
 
@@ -50,9 +45,6 @@ native int JB_GetSimon();
 // Checks if client is simon
 native bool JB_IsSimon(int iClient);
 
-// Displays main menu to client
-native void JB_DisplayMainMenu(int iClient);
-
 // Displays simon menu to client
 native void JB_DisplaySimonMenu(int iClient)
 
@@ -61,9 +53,6 @@ native void JB_DisplayAdminMenu(int iClient);
 
 // Displays bind cell buttons menu to a client
 native void JB_DisplayBindCellButtonsMenu(int iClient);
-
-// Displays revive menu to a client
-native void JB_DisplayReviveMenu(int iClient);
 
 // Displays random menu to a client
 native void JB_DisplayRandomMenu(int iClient);
@@ -74,6 +63,9 @@ native void JB_DisplayMuteMenu(int iClient);
 // Open cells
 native void JB_OpenCells();
 
+// Displays freeday menu to a client in mode
+native void JB_DisplayFreeDayMenu(int iClient);
+
 // Adds freeday for client
 native void JB_AddFreeDay(int iClient);
 
@@ -83,8 +75,15 @@ native void JB_RemoveFreeDay(int iClient, bool bSpawn = false);
 // Checks if client has freeday
 native void JB_HasFreeDay(int iClient);
 
-// Displays freeday menu to a client in mode
-native void JB_DisplayFreeDayMenu(int iClient, int iMode);
+// Returns time to end of freeday
+native int JB_GetFreeDayTime(int iClient);
+
+
+
+
+
+// Displays rebel menu to a client in mode
+native void JB_DisplayRebelMenu(int iClient);
 
 // Adds rebel for client
 native void JB_AddRebel(int iClient);
@@ -95,23 +94,31 @@ native void JB_RemoveRebel(int iClient);
 // Checks if client is rebel
 native void JB_IsRebel(int iClient);
 
-// Displays rebel menu to a client in mode
-native void JB_DisplayRebelMenu(int iClient, int iMode);
 
-// Adds division for client
-native void JB_AddDivision(int iClient, int iColorType);
 
-// Removes division for client
-native void JB_RemoveDivision(int iClient);
 
-// Checks if client is divided
-native void JB_IsDivided(int iClient);
 
 // Displays divide menu to a client
 native void JB_DisplayDivideMenu(int iClient);
 
+
+
+
+
 // Displays heal menu to a client
 native void JB_DisplayHealMenu(int iClient);
+
+// Displays revive menu to a client
+native void JB_DisplayReviveMenu(int iClient);
+
+
+
+// Returns an account
+native int JB_GetCurrency(int iClient);
+
+
+
+
 
 stock bool CreateDirectories(const char[] path, int mode, bool use_valve_fs = false, const char[] valve_path_id = "DEFAULT_WRITE_PATH") {
 	char partialPathBuffer[PLATFORM_MAX_PATH];

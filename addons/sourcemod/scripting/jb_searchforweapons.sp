@@ -32,8 +32,8 @@ public void OnPluginStart()
 	HookEvent("round_end", RoundEndEvent);
 	HookEvent("player_death", PlayerDeathEvent);
 	
-	RegConsoleCmd("+search", SearchCmd);
-	RegConsoleCmd("+przeszukaj", SearchCmd);
+	RegConsoleCmd("przeszukaj", SearchCmd);
+	RegConsoleCmd("search", SearchCmd);
 }
 
 public void OnMapStart()
@@ -79,13 +79,13 @@ public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcas
 public Action SearchCmd(int iClient, int args)
 {
 	if(!IsUserValid(iClient) || !IsPlayerAlive(iClient) || GetClientTeam(iClient) != CS_TEAM_CT)
-		return Plugin_Handled;
+		return Plugin_Continue;
 		
 	int iTarget = TraceClientViewEntity(iClient);
 	if(!IsUserValid(iTarget) || !IsPlayerAlive(iTarget) || GetClientTeam(iTarget) != CS_TEAM_T)
 	{
 		PrintToChat(iClient, "%s Namierz więźnia, aby go przeszukać.", JB_PREFIX);
-		return Plugin_Handled;
+		return Plugin_Continue;
 	}
 	
 	float vClientOrigin[3], vTargetOrigin[3];
@@ -97,7 +97,7 @@ public Action SearchCmd(int iClient, int args)
 		if(JB_HasFreeDay(iTarget))
 		{
 			PrintToChat(iClient, "%s Nie możesz przeszukać FreeDay'a.", JB_PREFIX);
-			return Plugin_Handled;
+			return Plugin_Continue;
 		}
 		
 		g_iSearchTarget[iClient] = iTarget;

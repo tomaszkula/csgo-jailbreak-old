@@ -7,10 +7,8 @@
 #define PLUGIN_DESCRIPTION ""
 #define PLUGIN_VERSION "1.0.0"
 
-#define CURRENCY "$"
 #define MONEY_PER_ROUND 20
 
-Handle g_hMoneyHud;
 int g_iMoney[MAXPLAYERS + 1];
 
 public Plugin myinfo = 
@@ -22,12 +20,14 @@ public Plugin myinfo =
 	url = ""
 };
 
+public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_max)
+{
+	CreateNative("JB_GetCurrency", GetCurrency);
+}
+
 public void OnPluginStart()
 {
 	HookEvent("round_start", RoundStartEvent);
-	
-	g_hMoneyHud = CreateHudSynchronizer();
-	CreateTimer(1.0, UpdateMoneyHudTimer, _, TIMER_REPEAT);
 }
 
 public void OnMapStart()
@@ -49,14 +49,12 @@ public Action RoundStartEvent(Event event, const char[] name, bool dontBroadcast
 	return Plugin_Continue;
 }
 
-public Action UpdateMoneyHudTimer(Handle timer)
+/////////////////////////////////////////////////////////////
+////////////////////////// NATIVES //////////////////////////
+/////////////////////////////////////////////////////////////
+
+public int GetCurrency(Handle plugin, int argc)
 {
-	SetHudTextParams(0.25, 0.96, 1.1, 255, 255, 110, 0);
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if(!IsUserValid(i))
-			continue;
-		
-		ShowSyncHudText(i, g_hMoneyHud, "%i %s", g_iMoney[i], CURRENCY);
-	}
+	int iClient = GetNativeCell(1);
+	return g_iMoney[iClient];
 }

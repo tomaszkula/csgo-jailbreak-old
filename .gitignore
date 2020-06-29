@@ -3,3 +3,4 @@
 
 *.inc
 !jail_go.inc
+!voiceannounce_ex.inc

@@ -14,7 +14,7 @@
 #define GUN_5 "weapon_galilar"
 #define GUN_6 "weapon_famas"
 
-bool g_bHasAccess[MAXPLAYERS + 1];
+bool g_bGun[MAXPLAYERS + 1];
 
 public Plugin myinfo = 
 {
@@ -38,18 +38,18 @@ public void OnPluginStart()
 public void OnMapStart()
 {
 	for (int i = 1; i <= MaxClients; i++)
-		g_bHasAccess[i] = false;
+		g_bGun[i] = false;
 }
 
 public void OnClientDisconnect_Post(int iClient)
 {
-	g_bHasAccess[iClient] = false;
+	g_bGun[iClient] = false;
 }
 
 public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	for (int i = 1; i <= MaxClients; i++)
-		g_bHasAccess[i] = false;
+		g_bGun[i] = false;
 	
 	return Plugin_Continue;
 }
@@ -59,7 +59,7 @@ public Action PlayerSpawnEvent(Event event, const char[] name, bool dontBroadcas
 	int iClient = GetClientOfUserId(event.GetInt("userid"));
 	if(GetClientTeam(iClient) == CS_TEAM_CT)
 	{
-		g_bHasAccess[iClient] = true;
+		g_bGun[iClient] = true;
 		DisplayGunsMenu(iClient);
 	}
 		
@@ -69,7 +69,7 @@ public Action PlayerSpawnEvent(Event event, const char[] name, bool dontBroadcas
 public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	int iVictim = GetClientOfUserId(event.GetInt("userid"));
-	g_bHasAccess[iVictim] = false;
+	g_bGun[iVictim] = false;
 		
 	return Plugin_Continue;
 }
@@ -84,7 +84,7 @@ public Action GunsMenuCmd(int iClient, int args)
 
 public void DisplayGunsMenu(int iClient)
 {
-	if(!IsUserValid(iClient) || !g_bHasAccess[iClient])
+	if(!IsUserValid(iClient) || GetClientTeam(iClient) != CS_TEAM_CT || !g_bGun[iClient])
 		return;
 	
 	Menu menu = CreateMenu(GunsMenuHandler);
@@ -104,10 +104,10 @@ public int GunsMenuHandler(Menu menu, MenuAction action, int iClient, int param2
 	{
 		case MenuAction_Select:
 		{
-			if(!g_bHasAccess[iClient])
+			if(!IsUserValid(iClient) || GetClientTeam(iClient) != CS_TEAM_CT || !g_bGun[iClient])
 				return -1;
 				
-			g_bHasAccess[iClient] = false;
+			g_bGun[iClient] = false;
 			
 			char szInfo[MAX_TEXT_LENGTH];
 			menu.GetItem(param2, szInfo, sizeof(szInfo));

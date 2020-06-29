@@ -7,7 +7,7 @@
 #define PLUGIN_DESCRIPTION ""
 #define PLUGIN_VERSION "1.0.0"
 
-#define ADMINMENU_REVIVE "revive"
+#define ADMINMENU_REVIVEMENU "revive_menu"
 #define ADMINMENU_BINDCELLS "bind_cells"
 
 public Plugin myinfo = 
@@ -24,37 +24,21 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_ma
 	CreateNative("JB_DisplayAdminMenu", DisplayAdminMenu);
 }
 
-public void OnPluginStart()
-{
-	RegAdminCmd("jb_admin_menu", AdminMenuCmd, ADMFLAG_BAN);
-}
-
-public Action AdminMenuCmd(int iClient, int args)
-{
-	JB_DisplayAdminMenu(iClient);
-	
-	return Plugin_Handled;
-}
-
-public int AdminMenuHandler(Menu menu, MenuAction action, int param1, int param2)
+public int AdminMenuHandler(Menu menu, MenuAction action, int iClient, int iItem)
 {
 	switch(action)
 	{
 		case MenuAction_Select:
 		{
-			if (!GetAdminFlag(GetUserAdmin(param1), Admin_Ban))
+			if (!IsUserValid(iClient) || !GetAdminFlag(GetUserAdmin(iClient), Admin_Ban))
 				return -1;
 			
-			char szInfo[MAX_TEXT_LENGTH];
-			menu.GetItem(param2, szInfo, sizeof(szInfo)); 
-			if(StrEqual(szInfo, ADMINMENU_REVIVE))
-			{
-				JB_DisplayReviveMenu(param1);
-			}
-			else if(StrEqual(szInfo, ADMINMENU_BINDCELLS))
-			{
-				JB_DisplayBindCellButtonsMenu(param1);
-			}
+			char szItemInfo[MAX_TEXT_LENGTH];
+			menu.GetItem(iItem, szItemInfo, sizeof(szItemInfo));
+			if(StrEqual(szItemInfo, ADMINMENU_REVIVEMENU))
+				JB_DisplayReviveMenu(iClient);
+			else if(StrEqual(szItemInfo, ADMINMENU_BINDCELLS))
+				JB_DisplayBindCellButtonsMenu(iClient);
 		}
 		
 		case MenuAction_End:
@@ -73,12 +57,12 @@ public int AdminMenuHandler(Menu menu, MenuAction action, int param1, int param2
 public int DisplayAdminMenu(Handle plugin, int argc)
 {
 	int iClient = GetNativeCell(1);
-	if(!IsUserValid(iClient))
+	if (!IsUserValid(iClient) || !GetAdminFlag(GetUserAdmin(iClient), Admin_Ban))
 		return;
 	
 	Menu menu = CreateMenu(AdminMenuHandler, MENU_ACTIONS_ALL);
 	menu.SetTitle("[Menu] Admin");
-	menu.AddItem(ADMINMENU_REVIVE, "Ożyw gracza");
+	menu.AddItem(ADMINMENU_REVIVEMENU, "Ożyw gracza");
 	menu.AddItem(ADMINMENU_BINDCELLS, "Ustaw przycisk cel");
 	menu.Display(iClient, MENU_TIME_FOREVER);
 }

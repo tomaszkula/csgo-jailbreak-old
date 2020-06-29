@@ -50,7 +50,7 @@ public void OnClientSpeakingEx(int iClient)
 {
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if(!IsUserValid(i))
+		if(!IsUserValid(i) || i == iClient)
 			continue;
 		
 		if(g_bMute[i][iClient])

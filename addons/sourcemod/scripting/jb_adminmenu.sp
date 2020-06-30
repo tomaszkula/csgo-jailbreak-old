@@ -24,6 +24,17 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_ma
 	CreateNative("JB_DisplayAdminMenu", DisplayAdminMenu);
 }
 
+public void OnPluginStart()
+{
+	RegAdminCmd("jb_admin_menu", AdminMenuCmd, ADMFLAG_BAN);
+}
+
+public Action AdminMenuCmd(int iClient, int args)
+{
+	JB_DisplayAdminMenu(iClient);
+	return Plugin_Continue;
+}
+
 public int AdminMenuHandler(Menu menu, MenuAction action, int iClient, int iItem)
 {
 	switch(action)
@@ -38,13 +49,11 @@ public int AdminMenuHandler(Menu menu, MenuAction action, int iClient, int iItem
 			if(StrEqual(szItemInfo, ADMINMENU_REVIVEMENU))
 				JB_DisplayReviveMenu(iClient);
 			else if(StrEqual(szItemInfo, ADMINMENU_BINDCELLS))
-				JB_DisplayBindCellButtonsMenu(iClient);
+				JB_DisplayBindButtonsMenu(iClient);
 		}
 		
 		case MenuAction_End:
-		{
 			delete menu;
-		}
 	}
 	
 	return 0;

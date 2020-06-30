@@ -63,8 +63,7 @@ public void OnClientSpeakingEx(int iClient)
 public Action MuteCmd(int iClient, int args)
 {
 	JB_DisplayMuteMenu(iClient);
-	
-	return Plugin_Handled;
+	return Plugin_Continue;
 }
 
 public int MuteMenuHandler(Menu menu, MenuAction action, int iClient, int iItem)
@@ -85,9 +84,7 @@ public int MuteMenuHandler(Menu menu, MenuAction action, int iClient, int iItem)
 		}
 		
 		case MenuAction_End:
-		{
 			delete menu;
-		}
 	}
 	
 	return 0;

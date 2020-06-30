@@ -28,7 +28,7 @@ public Plugin myinfo =
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_max)
 {
-	CreateNative("JB_DisplayBindCellButtonsMenu", DisplayBindCellButtonsMenu);
+	CreateNative("JB_DisplayBindButtonsMenu", DisplayBindButtonsMenu);
 	CreateNative("JB_OpenCells", OpenCells);
 }
 
@@ -36,7 +36,6 @@ public void OnPluginStart()
 {
 	char szDirPath[MAX_TEXT_LENGTH];
 	BuildPath(Path_SM, szDirPath, sizeof(szDirPath), "%s", CELL_BUTTONS_CONFIG_PATH);
-	
 	if(!DirExists(szDirPath))
 		CreateDirectories(szDirPath, 511);
 }
@@ -75,36 +74,32 @@ public void OnMapEnd()
 	CloseHandle(kv);
 }
 
-public int BindCellButtonsMenuHandler(Menu menu, MenuAction action, int param1, int param2)
+public int BindButtonsMenuHandler(Menu menu, MenuAction action, int iClient, int iItem)
 {
 	switch(action)
 	{
 		case MenuAction_Select:
 		{
-			if (!GetAdminFlag(GetUserAdmin(param1), Admin_Ban))
+			if (!IsUserValid(iClient) || !GetAdminFlag(GetUserAdmin(iClient), Admin_Ban))
 				return -1;
 
-			char szInfo[MAX_TEXT_LENGTH];
-			menu.GetItem(param2, szInfo, sizeof(szInfo)); 
-			BindCellButton(param1, param2, szInfo);
-			JB_DisplayBindCellButtonsMenu(param1);
+			char szItemInfo[MAX_TEXT_LENGTH];
+			menu.GetItem(iItem, szItemInfo, sizeof(szItemInfo)); 
+			BindCellButton(iClient, iItem, szItemInfo);
+			JB_DisplayBindButtonsMenu(iClient);
 		}
 		
 		case MenuAction_Cancel:
-		{
-			JB_DisplayAdminMenu(param1);
-		}
+			JB_DisplayAdminMenu(iClient);
 		
 		case MenuAction_End:
-		{
 			delete menu;
-		}
 	}
 	
 	return 0;
 }
 
-void BindCellButton(int iClient, int iSlot, char[] szSlot)
+public void BindCellButton(int iClient, int iSlot, char[] szSlot)
 {
 	if(IsValidEntity(g_iButtons[iSlot]))
 	{
@@ -147,23 +142,23 @@ void BindCellButton(int iClient, int iSlot, char[] szSlot)
 ////////////////////////// NATIVES //////////////////////////
 /////////////////////////////////////////////////////////////
 
-public int DisplayBindCellButtonsMenu(Handle plugin, int argc)
+public int DisplayBindButtonsMenu(Handle plugin, int argc)
 {
 	int iClient = GetNativeCell(1);
-	if(!IsUserValid(iClient))
+	if (!IsUserValid(iClient) || !GetAdminFlag(GetUserAdmin(iClient), Admin_Ban))
 		return;
 	
-	Menu menu = CreateMenu(BindCellButtonsMenuHandler, MENU_ACTIONS_ALL);
-	char szMenuItemInfo[MAX_TEXT_LENGTH], szMenuItemTitle[MAX_TEXT_LENGTH];
+	Menu menu = CreateMenu(BindButtonsMenuHandler, MENU_ACTIONS_ALL);
+	char szItemInfo[MAX_TEXT_LENGTH], szItemTitle[MAX_TEXT_LENGTH];
 	for (int i = 0; i < CELL_BUTTONS_SLOTS; i++)
 	{
-		Format(szMenuItemInfo, sizeof(szMenuItemInfo), "%s%i", KV_KEY, i + 1);
-		Format(szMenuItemTitle, sizeof(szMenuItemTitle), "Slot %i", i + 1);
+		Format(szItemInfo, sizeof(szItemInfo), "%s%i", KV_KEY, i + 1);
+		Format(szItemTitle, sizeof(szItemTitle), "Slot %i", i + 1);
 		if(IsValidEntity(g_iButtons[i]))
-			Format(szMenuItemTitle, sizeof(szMenuItemTitle), "[Zresetuj] %s, id=%i", szMenuItemTitle, g_iButtons[i]);
+			Format(szItemTitle, sizeof(szItemTitle), "[Zresetuj] %s, id=%i", szItemTitle, g_iButtons[i]);
 		else
-			Format(szMenuItemTitle, sizeof(szMenuItemTitle), "[Ustaw] %s", szMenuItemTitle);
-		menu.AddItem(szMenuItemInfo, szMenuItemTitle);
+			Format(szItemTitle, sizeof(szItemTitle), "[Ustaw] %s", szItemTitle);
+		menu.AddItem(szItemInfo, szItemTitle);
 	}
 	menu.SetTitle("[Menu] Ustaw przyciski cel");
 	menu.ExitBackButton = true;

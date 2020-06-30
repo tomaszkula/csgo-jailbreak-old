@@ -7,8 +7,6 @@
 #define PLUGIN_DESCRIPTION ""
 #define PLUGIN_VERSION "1.0.0"
 
-bool g_bHasAccess[MAXPLAYERS + 1];
-
 public Plugin myinfo = 
 {
 	name = PLUGIN_NAME,
@@ -23,61 +21,18 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_ma
 	CreateNative("JB_DisplayHealMenu", DisplayHealMenu);
 }
 
-public void OnPluginStart()
-{
-	HookEvent("round_end", RoundEndEvent);
-	HookEvent("player_death", PlayerDeathEvent);
-}
-
-public void OnMapStart()
-{
-	for (int i = 1; i <= MaxClients; i++)
-		g_bHasAccess[i] = false;
-}
-
-public void OnClientDisconnect_Post(int iClient)
-{
-	g_bHasAccess[iClient] = false;
-}
-
-public void OnAddSimon(int iClient)
-{
-	g_bHasAccess[iClient] = true;
-}
-
-public void OnRemoveSimon(int iClient)
-{
-	g_bHasAccess[iClient] = false;
-}
-
-public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
-{
-	for (int i = 1; i <= MaxClients; i++)
-		g_bHasAccess[i] = false;
-	
-	return Plugin_Continue;
-}
-
-public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcast)
-{
-	int iVictim = GetClientOfUserId(event.GetInt("userid"));
-	g_bHasAccess[iVictim] = false;
-		
-	return Plugin_Continue;
-}
-
-public int HealMenuHandler(Menu menu, MenuAction action, int iClient, int param2)
+public int HealMenuHandler(Menu menu, MenuAction action, int iClient, int iItem)
 {
 	switch(action)
 	{
 		case MenuAction_Select:
 		{
-			if(!g_bHasAccess[iClient])
+			if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
 				return -1;
 			
-			char szInfo[MAX_TEXT_LENGTH];
-			menu.GetItem(param2, szInfo, sizeof(szInfo)); 
-			int iTarget = StringToInt(szInfo);
+			char szItemInfo[MAX_TEXT_LENGTH];
+			menu.GetItem(iItem, szItemInfo, sizeof(szItemInfo)); 
+			int iTarget = StringToInt(szItemInfo);
 			if(!IsUserValid(iTarget) || !IsPlayerAlive(iTarget) || GetClientTeam(iTarget) != CS_TEAM_T || JB_HasFreeDay(iTarget) || JB_IsRebel(iTarget) || GetClientHealth(iTarget) >= 100)
 			{
         		JB_DisplayHealMenu(iClient);
@@ -93,10 +48,11 @@ public int HealMenuHandler(Menu menu, MenuAction action, int iClient, int param2
 			JB_DisplayHealMenu(iClient);
 		}
 		
+		case MenuAction_Cancel:
+			JB_DisplayPrisonersManagerMenu(iClient);
+		
 		case MenuAction_End:
-		{
 			delete menu;
-		}
 	}
 	
 	return 0;
@@ -109,7 +65,7 @@ public int HealMenuHandler(Menu menu, MenuAction action, int iClient, int param2
 public int DisplayHealMenu(Handle plugin, int argc)
 {
 	int iClient = GetNativeCell(1);
-	if(!IsUserValid(iClient) || !g_bHasAccess[iClient])
+	if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
 		return;
 	
 	Menu menu = CreateMenu(HealMenuHandler, MENU_ACTIONS_ALL);
@@ -127,5 +83,6 @@ public int DisplayHealMenu(Handle plugin, int argc)
         menu.AddItem(szItemInfo, szItemTitle);
 	} 
 	menu.SetTitle("[Menu] Ulecz więźnia");
+	menu.ExitBackButton = true;
 	menu.Display(iClient, MENU_TIME_FOREVER);
 }

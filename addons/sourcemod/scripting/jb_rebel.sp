@@ -11,14 +11,6 @@ GlobalForward g_OnAddRebelForward;
 bool g_bIsRebel[MAXPLAYERS + 1];
 int g_iGlowEntity[MAXPLAYERS + 1];
 
-public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_max)
-{
-	CreateNative("JB_DisplayRebelMenu", DisplayRebelMenu);
-	CreateNative("JB_AddRebel", AddRebel);
-	CreateNative("JB_RemoveRebel", RemoveRebel);
-	CreateNative("JB_IsRebel", IsRebel);
-}
-
 public Plugin myinfo = 
 {
 	name = PLUGIN_NAME,
@@ -27,6 +19,14 @@ public Plugin myinfo =
 	version = PLUGIN_VERSION,
 	url = ""
 };
+
+public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_max)
+{
+	CreateNative("JB_DisplayRebelMenu", DisplayRebelMenu);
+	CreateNative("JB_AddRebel", AddRebel);
+	CreateNative("JB_RemoveRebel", RemoveRebel);
+	CreateNative("JB_IsRebel", IsRebel);
+}
 
 public void OnPluginStart()
 {
@@ -91,10 +91,11 @@ public int RebelMenuHandler(Menu menu, MenuAction action, int iClient, int iItem
 			JB_DisplayRebelMenu(iClient);
 		}
 		
+		case MenuAction_Cancel:
+			JB_DisplayPrisonersManagerMenu(iClient);
+		
 		case MenuAction_End:
-		{
 			delete menu;
-		}
 	}
 	
 	return 0;
@@ -123,6 +124,7 @@ public int DisplayRebelMenu(Handle plugin, int argc)
         menu.AddItem(szItemInfo, szItemTitle);
 	} 
 	menu.SetTitle("[Menu] Zabierz buntownika");
+	menu.ExitBackButton = true;
 	menu.Display(iClient, MENU_TIME_FOREVER);
 }
 

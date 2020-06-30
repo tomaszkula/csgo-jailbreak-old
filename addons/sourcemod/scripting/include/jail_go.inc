@@ -10,17 +10,13 @@
 #define EF_PARENT_ANIMATES (1 << 9)
 #define EF_NORECEIVESHADOWS (1 << 6)
 
-// Called when iClient got simon function
-forward void OnAddSimon(int iClient);
-
-// Called when iClient lost simon function
-forward void OnRemoveSimon(int iClient);
-
 // Called when iClient got freeday
 forward void OnAddFreeDay(int iClient);
 
 // Called when iClient came rebel
 forward void OnAddRebel(int iClient);
+
+
 
 // Returns day number
 native int JB_GetDay();
@@ -33,11 +29,18 @@ native int JB_GetDay();
  */
 native void JB_GetDayName(int day, char[] dayName);
 
-// Adds simon
-native void JB_AddSimon(int iClient);
 
-// Removes simon
-native void JB_RemoveSimon();
+
+// Returns an account
+native int JB_GetCurrency(int iClient);
+
+// Open cells
+native void JB_OpenCells();
+
+
+
+// Get simon client id
+native int JB_AddSimon(int iClient);
 
 // Get simon client id
 native int JB_GetSimon();
@@ -45,26 +48,7 @@ native int JB_GetSimon();
 // Checks if client is simon
 native bool JB_IsSimon(int iClient);
 
-// Displays simon menu to client
-native void JB_DisplaySimonMenu(int iClient)
 
-// Displays admin menu to client
-native void JB_DisplayAdminMenu(int iClient);
-
-// Displays bind cell buttons menu to a client
-native void JB_DisplayBindCellButtonsMenu(int iClient);
-
-// Displays random menu to a client
-native void JB_DisplayRandomMenu(int iClient);
-
-// Displays mute menu to a client
-native void JB_DisplayMuteMenu(int iClient);
-
-// Open cells
-native void JB_OpenCells();
-
-// Displays freeday menu to a client in mode
-native void JB_DisplayFreeDayMenu(int iClient);
 
 // Adds freeday for client
 native void JB_AddFreeDay(int iClient);
@@ -80,11 +64,6 @@ native int JB_GetFreeDayTime(int iClient);
 
 
 
-
-
-// Displays rebel menu to a client in mode
-native void JB_DisplayRebelMenu(int iClient);
-
 // Adds rebel for client
 native void JB_AddRebel(int iClient);
 
@@ -96,27 +75,38 @@ native void JB_IsRebel(int iClient);
 
 
 
+// Displays Admin Menu to a client (ADMIN_BAN flag required)
+native void JB_DisplayAdminMenu(int iClient);
 
-
-// Displays divide menu to a client
-native void JB_DisplayDivideMenu(int iClient);
-
-
-
-
-
-// Displays heal menu to a client
-native void JB_DisplayHealMenu(int iClient);
-
-// Displays revive menu to a client
+// Displays Revive Menu to a client (ADMIN_BAN flag required)
 native void JB_DisplayReviveMenu(int iClient);
 
+// Displays Bind Button Menu to a client (ADMIN_BAN flag required)
+native void JB_DisplayBindButtonsMenu(int iClient);
 
+// Displays Simon Menu to a client (for Simon)
+native void JB_DisplaySimonMenu(int iClient);
 
-// Returns an account
-native int JB_GetCurrency(int iClient);
+// Displays Prisoners Manager Menu to a client (for Simon)
+native void JB_DisplayPrisonersManagerMenu(int iClient);
 
+// Displays Heal Menu to a client (for Simon)
+native void JB_DisplayHealMenu(int iClient);
 
+// Displays Divide Menu to a client (for Simon)
+native void JB_DisplayDivideMenu(int iClient);
+
+// Displays FreeDay Menu to a client (for Simon)
+native void JB_DisplayFreeDayMenu(int iClient);
+
+// Displays Rebel Menu to a client (for Simon)
+native void JB_DisplayRebelMenu(int iClient);
+
+// Displays Random Menu to a client (for Simon)
+native void JB_DisplayRandomMenu(int iClient);
+
+// Displays Mute Menu to a client
+native void JB_DisplayMuteMenu(int iClient);
 
 
 

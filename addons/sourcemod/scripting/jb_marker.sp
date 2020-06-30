@@ -9,7 +9,7 @@
 #define PLUGIN_VERSION "1.0.0"
 
 int g_iBeamSprite;
-bool g_bHasAccess[MAXPLAYERS + 1], g_bIsPainting[MAXPLAYERS + 1];
+bool g_bIsPainting[MAXPLAYERS + 1];
 float g_fLastPosition[MAXPLAYERS + 1][3];
 
 public Plugin myinfo = 
@@ -37,36 +37,18 @@ public void OnMapStart()
 	g_iBeamSprite = PrecacheModel("materials/sprites/laserbeam.vmt");
 	
 	for (int i = 1; i <= MaxClients; i++)
-	{
-		g_bHasAccess[i] = false;
 		g_bIsPainting[i] = false;
-	}
 }
 
 public void OnClientDisconnect_Post(int iClient)
 {
-	g_bHasAccess[iClient] = false;
-	g_bIsPainting[iClient] = false;
-}
-
-public void OnAddSimon(int iClient)
-{
-	g_bHasAccess[iClient] = true;
-}
-
-public void OnRemoveSimon(int iClient)
-{
-	g_bHasAccess[iClient] = false;
 	g_bIsPainting[iClient] = false;
 }
 
 public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	for (int i = 1; i <= MaxClients; i++)
-	{
-		g_bHasAccess[i] = false;
 		g_bIsPainting[i] = false;
-	}
 	
 	return Plugin_Continue;
 }
@@ -74,7 +56,6 @@ public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
 public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	int iVictim = GetClientOfUserId(event.GetInt("userid"));
-	g_bHasAccess[iVictim] = false;
 	g_bIsPainting[iVictim] = false;
 		
 	return Plugin_Continue;
@@ -85,7 +66,7 @@ public Action PaintTimer(Handle timer)
 	float fPos[3];
 	for(int i = 1; i <= MaxClients; i++) 
 	{
-		if(!IsUserValid(i) || !g_bHasAccess[i] || !g_bIsPainting[i])
+		if(!IsUserValid(i) || !JB_IsSimon(i) || !g_bIsPainting[i])
 			continue;
 			
 		TraceClientViewPosition(i, fPos);
@@ -102,11 +83,13 @@ public Action PaintTimer(Handle timer)
 			g_fLastPosition[i] = fPos;
 		}
 	}
+	
+	return Plugin_Continue;
 }
 
 public Action PaintCmd(int iClient, int args)
 {
-	if(!g_bHasAccess[iClient])
+	if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
 		return Plugin_Handled;
 	
 	char szCommand[MAX_TEXT_LENGTH];

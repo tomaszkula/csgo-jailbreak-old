@@ -112,10 +112,11 @@ public int DivideMenuHandler(Menu menu, MenuAction action, int iClient, int iIte
 				return ITEMDRAW_SPACER;
 		}
 		
+		case MenuAction_Cancel:
+			JB_DisplayPrisonersManagerMenu(iClient);
+		
 		case MenuAction_End:
-		{
 			delete menu;
-		}
 	}
 	
 	return 0;
@@ -195,5 +196,6 @@ public int DisplayDivideMenu(Handle plugin, int argc)
 	menu.AddItem(DIVIDEMENU_BLANK, "");
 	menu.AddItem(DIVIDEMENU_TEAMS0, "Usuń podział");
 	menu.SetTitle("[Menu] Podziel więźniów");
+	menu.ExitBackButton = true;
 	menu.Display(iClient, MENU_TIME_FOREVER);
 }

@@ -121,10 +121,11 @@ public int FreeDayMenuHandler(Menu menu, MenuAction action, int iClient, int iIt
 			JB_DisplayFreeDayMenu(iClient);
 		}
 		
+		case MenuAction_Cancel:
+			JB_DisplayPrisonersManagerMenu(iClient);
+		
 		case MenuAction_End:
-		{
 			delete menu;
-		}
 	}
 	
 	return 0;
@@ -166,6 +167,7 @@ public int DisplayFreeDayMenu(Handle plugin, int argc)
         menu.AddItem(szItemInfo, szItemTitle);
 	} 
 	menu.SetTitle("[Menu] Daj/Zabierz FreeDay'a");
+	menu.ExitBackButton = true;
 	menu.Display(iClient, MENU_TIME_FOREVER);
 }
 

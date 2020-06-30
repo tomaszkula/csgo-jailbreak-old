@@ -52,10 +52,11 @@ public int ReviveMenuHandler(Menu menu, MenuAction action, int iClient, int iIte
 			JB_DisplayReviveMenu(iClient);
 		}
 		
+		case MenuAction_Cancel:
+			JB_DisplayAdminMenu(iClient);
+		
 		case MenuAction_End:
-		{
 			delete menu;
-		}
 	}
 	
 	return 0;
@@ -88,5 +89,6 @@ public int DisplayReviveMenu(Handle plugin, int argc)
 		menu.AddItem(szItemInfo, szItemTitle);
 	} 
 	menu.SetTitle("[Menu] Ożyw gracza");
+	menu.ExitBackButton = true;
 	menu.Display(iClient, MENU_TIME_FOREVER);
 }

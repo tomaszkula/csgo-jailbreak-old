@@ -157,9 +157,7 @@ public int WardenMenuHandler(Menu menu, MenuAction action, int iClient, int iIte
 		}
 		
 		case MenuAction_End:
-		{
 			delete menu;
-		}
 	}
 	
 	return 0;

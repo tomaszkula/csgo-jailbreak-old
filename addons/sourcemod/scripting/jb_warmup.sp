@@ -24,7 +24,6 @@ public void OnPluginStart()
 public Action HudMsgUserMessage(UserMsg msg_id, Protobuf msg, const int[] players, int playersNum, bool reliable, bool init)
 {
 	PrintToServer("hm");
-	//PrintCenterText(
 }
 
 public bool IsWarmUp()

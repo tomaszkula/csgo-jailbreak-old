@@ -12,7 +12,7 @@
 #define RANDOMMENU_NOREPEAT "no_repeat"
 #define RANDOMMENU_NOREPEAT_RESET "no_repeat_reset"
 
-bool g_bHasAccess[MAXPLAYERS + 1], g_bIsRandom[MAXPLAYERS + 1];
+bool g_bIsRandom[MAXPLAYERS + 1];
 
 public Plugin myinfo = 
 {
@@ -32,42 +32,23 @@ public void OnPluginStart()
 {
 	HookEvent("round_end", RoundEndEvent);
 	HookEvent("player_death", PlayerDeathEvent);
-	
-	RegConsoleCmd("jb_random_menu", RandomMenuCmd);
 }
 
 public void OnMapStart()
 {
 	for (int i = 1; i <= MaxClients; i++)
-	{
-		g_bHasAccess[i] = false;
 		g_bIsRandom[i] = false;
-	}
 }
 
 public void OnClientDisconnect_Post(int iClient)
 {
-	g_bHasAccess[iClient] = false;
 	g_bIsRandom[iClient] = false;
-}
-
-public void OnAddSimon(int iClient)
-{
-	g_bHasAccess[iClient] = true;
-}
-
-public void OnRemoveSimon(int iClient)
-{
-	g_bHasAccess[iClient] = false;
 }
 
 public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	for (int i = 1; i <= MaxClients; i++)
-	{
-		g_bHasAccess[i] = false;
 		g_bIsRandom[i] = false;
-	}
 	
 	return Plugin_Continue;
 }
@@ -75,16 +56,8 @@ public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
 public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	int iVictim = GetClientOfUserId(event.GetInt("userid"));
-	g_bHasAccess[iVictim] = false;
 	g_bIsRandom[iVictim] = false;
 		
-	return Plugin_Continue;
-}
-
-public Action RandomMenuCmd(int iClient, int args)
-{
-	JB_DisplayRandomMenu(iClient);
-	
 	return Plugin_Continue;
 }
 
@@ -94,7 +67,7 @@ public int RandomMenuHandler(Menu menu, MenuAction action, int iClient, int para
 	{
 		case MenuAction_Select:
 		{
-			if(!g_bHasAccess[iClient])
+			if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
 				return -1;
 				
 			char szInfo[MAX_TEXT_LENGTH];
@@ -133,10 +106,11 @@ public int RandomMenuHandler(Menu menu, MenuAction action, int iClient, int para
 			JB_DisplayRandomMenu(iClient);
 		}
 		
+		case MenuAction_Cancel:
+			JB_DisplayPrisonersManagerMenu(iClient);
+		
 		case MenuAction_End:
-		{
 			delete menu;
-		}
 	}
 	
 	return 0;
@@ -170,7 +144,7 @@ int RandomPrisoner(bool bRepeat = true)
 public int DisplayRandomMenu(Handle plugin, int argc)
 {
 	int iClient = GetNativeCell(1);
-	if(!IsUserValid(iClient) || !g_bHasAccess[iClient])
+	if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
 		return;
 	
 	Menu menu = CreateMenu(RandomMenuHandler, MENU_ACTIONS_ALL);
@@ -178,5 +152,6 @@ public int DisplayRandomMenu(Handle plugin, int argc)
 	menu.AddItem(RANDOMMENU_NOREPEAT, "Losuj bez powtórzeń");
 	menu.AddItem(RANDOMMENU_NOREPEAT_RESET, "Zresetuj powtórzenia");
 	menu.SetTitle("[Menu] Wylosuj więźnia");
+	menu.ExitBackButton = true;
 	menu.Display(iClient, MENU_TIME_FOREVER);
 }

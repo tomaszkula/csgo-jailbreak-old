@@ -7,6 +7,12 @@
 #define PLUGIN_DESCRIPTION ""
 #define PLUGIN_VERSION "1.0.0"
 
+#define GODMODE_TIME 60
+
+int g_iGodModeTime;
+bool g_bGodMode;
+Handle g_hGodModeTimer;
+
 public Plugin myinfo = 
 {
 	name = PLUGIN_NAME,
@@ -16,17 +22,86 @@ public Plugin myinfo =
 	url = ""
 };
 
-public void OnPluginStart()
+public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_max)
 {
-	HookUserMessage(GetUserMessageId("HudText"), HudMsgUserMessage, true);
+	CreateNative("JB_GetGodModeTime", GetGodModeTime);
 }
 
-public Action HudMsgUserMessage(UserMsg msg_id, Protobuf msg, const int[] players, int playersNum, bool reliable, bool init)
+public Action PlayerSpawnEvent(Event event, const char[] name, bool dontBroadcast)
 {
-	PrintToServer("hm");
+	int iClient = GetClientOfUserId(event.GetInt("userid"));
+	SetGodModeClient(iClient, g_bGodMode)
+	
+	return Plugin_Continue;
 }
 
-public bool IsWarmUp()
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
 {
-	return (GameRules_GetProp("m_bWarmupPeriod") == 1);
+	if(iOldDayMode == WARM_UP)
+	{
+		UnhookEvent("player_spawn", PlayerSpawnEvent);
+		SetGodMode(false);
+	}
+	
+	if(iNewDayMode == WARM_UP)
+	{
+		HookEvent("player_spawn", PlayerSpawnEvent);
+		SetGodMode(true);
+	}
+}
+
+public Action GodModeTimer(Handle timer)
+{
+	if(--g_iGodModeTime <= 0)
+	{
+		KillTimer(g_hGodModeTimer);
+		g_hGodModeTimer = INVALID_HANDLE;
+		
+		SetGodMode(false);
+	}
+	
+	return Plugin_Continue;
+}
+
+void SetGodMode(bool bGodMode)
+{
+	if(bGodMode == g_bGodMode)
+		return;
+	
+	g_bGodMode = bGodMode;
+	for (int i = 1; i <= MAXPLAYERS; i++)
+	{
+		if(!IsUserValid(i) || !IsPlayerAlive(i))
+			continue;
+		
+		SetGodModeClient(i, bGodMode);
+	}
+	
+	if(bGodMode)
+	{
+		g_iGodModeTime = GODMODE_TIME;
+		g_hGodModeTimer = CreateTimer(1.0, GodModeTimer, _, TIMER_REPEAT);
+	}
+	else
+	{
+		if(g_hGodModeTimer != INVALID_HANDLE)
+		{
+			KillTimer(g_hGodModeTimer);
+			g_hGodModeTimer = INVALID_HANDLE;
+		}
+	}
+}
+
+void SetGodModeClient(int iClient, bool bGodMode)
+{
+	SetEntProp(iClient, Prop_Data, "m_takedamage", bGodMode ? 0 : 2, 1);
+}
+
+/////////////////////////////////////////////////////////////
+////////////////////////// NATIVES //////////////////////////
+/////////////////////////////////////////////////////////////
+
+public int GetGodModeTime(Handle plugin, int argc)
+{
+	return g_iGodModeTime;
 }

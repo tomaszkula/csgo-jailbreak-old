@@ -9,6 +9,7 @@
 
 #define FORUM_URL "forum.pl"
 
+int g_iDayMode;
 Handle g_hMainHud, g_hPrisonersInfoHud, g_hCurrencyHud;
 
 public Plugin myinfo = 
@@ -23,48 +24,89 @@ public Plugin myinfo =
 public void OnPluginStart()
 {
 	g_hMainHud = CreateHudSynchronizer();
-	g_hPrisonersInfoHud = CreateHudSynchronizer();
-	g_hCurrencyHud = CreateHudSynchronizer();
+	//g_hPrisonersInfoHud = CreateHudSynchronizer();
+	//g_hCurrencyHud = CreateHudSynchronizer();
 }
 
 public void OnMapStart()
 {
-	CreateTimer(1.0, UpdateMainHudTimer, _, TIMER_REPEAT);
-	CreateTimer(1.0, UpdatePrisonersInfoTimer, _, TIMER_REPEAT);
-	CreateTimer(1.0, UpdateCurrencyTimer, _, TIMER_REPEAT);
+	CreateTimer(1.0, MainHudTimer, _, TIMER_REPEAT);
+	//CreateTimer(1.0, UpdatePrisonersInfoTimer, _, TIMER_REPEAT);
+	//CreateTimer(1.0, UpdateCurrencyTimer, _, TIMER_REPEAT);
 }
 
-public Action UpdateMainHudTimer(Handle timer)
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
 {
-	char[] format = 
-				"[ Forum | %s ]\n\n"
-				..."[ %i Dzień | %s ]\n\n"
-				
-				..."[ Strażnicy | %i / %i ]\n"
-				..."[ Więźniowie | %i / %i ]\n"
-				..."[ Prowadzący | %s ]";
+	g_iDayMode = iNewDayMode;
+}
+
+public Action MainHudTimer(Handle timer)
+{
+	char szFormat[MAX_TEXT_LENGTH];
+	Format(szFormat, sizeof(szFormat), "[ Forum | %s ]\n\n", FORUM_URL);
 	
-	int iDay = JB_GetDay();
-	char szDayName[MAX_TEXT_LENGTH];
-	JB_GetDayName(iDay, szDayName);
+	if(g_iDayMode == NONE)
+		Format(szFormat, sizeof(szFormat), "%sJAILBREAK MOD by tomkul777", szFormat);
+	else
+	{
+		int iDay = JB_GetDay();
+		char szDayName[MAX_TEXT_LENGTH]; JB_GetDayName(iDay, szDayName);
+		char szDayModeName[MAX_TEXT_LENGTH]; JB_GetDayModeName(g_iDayMode, szDayModeName);
+		
+		Format(szFormat, sizeof(szFormat),
+			"%s"
+			..."[ %i Dzień | %s ]\n"
+			..."[ Typ Dnia | %s ]\n\n"
+			..."[ Strażnicy | %i / %i ]\n"
+			..."[ Więźniowie | %i / %i ]\n", szFormat, iDay, szDayName, szDayModeName, JB_GetWardensCount(true), JB_GetWardensCount(), JB_GetPrisonersCount(true), JB_GetPrisonersCount());
+			
+		if(g_iDayMode == WARM_UP)
+		{
+			int iGodModeTime = JB_GetGodModeTime();
+			
+			char szGodModeTimeInfo[MAX_TEXT_LENGTH];
+			if(iGodModeTime > 0)
+				Format(szGodModeTimeInfo, sizeof(szGodModeTimeInfo), "Nieśmiertelność | %is", iGodModeTime);
+			else
+				Format(szGodModeTimeInfo, sizeof(szGodModeTimeInfo), "Brak nieśmiertelności");
+			
+			Format(szFormat, sizeof(szFormat),
+				"%s\n"
+				..."[ %s ]", szFormat, szGodModeTimeInfo);
+		}
+		else if(g_iDayMode == NORMAL)
+		{
+			int iSimon = 0///JB_GetSimon();
+			
+			char szSimonNameInfo[MAX_TEXT_LENGTH];
+			if(iSimon == 0)
+				Format(szSimonNameInfo, sizeof(szSimonNameInfo), "Brak prowadzącego");
+			else
+			{
+				char szSimonName[MAX_TEXT_LENGTH];
+				GetClientName(iSimon, szSimonName, sizeof(szSimonName));
+				Format(szSimonNameInfo, sizeof(szSimonNameInfo), "Prowadzący | %s", szSimonName);
+			}
+			
+			Format(szFormat, sizeof(szFormat),
+				"%s\n"
+				..."[ %s ]", szFormat, szSimonNameInfo);
+		}
+	}
 	
-	char szSimonName[MAX_TEXT_LENGTH] = "BRAK";
-	if(!JB_IsSimon(0))
-		GetClientName(JB_GetSimon(), szSimonName, sizeof(szSimonName));
-	
-	SetHudTextParams(0.16, 0.06, 1.1, 255, 255, 110, 0);
+	SetHudTextParams(0.16, 0.03, 1.1, 255, 255, 110, 0);
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if(!IsUserValid(i))
 			continue;
 		
-		ShowSyncHudText(i, g_hMainHud, format, FORUM_URL, iDay, szDayName, JB_GetWardensCount(true), JB_GetWardensCount(), JB_GetPrisonersCount(true), JB_GetPrisonersCount(), szSimonName);
+		ShowSyncHudText(i, g_hMainHud, szFormat);
 	}
 	
 	return Plugin_Continue;
 }
 
-public Action UpdatePrisonersInfoTimer(Handle timer)
+/*public Action UpdatePrisonersInfoTimer(Handle timer)
 {
 	char szFormatFreeDay[MAX_TEXT_LENGTH] = "[ FreeDay'e ]", szFormatRebel[MAX_TEXT_LENGTH] = "[ Buntownicy ]", szClientName[MAX_TEXT_LENGTH];
 	int iFreeDayCount = 0, iRebelCount = 0;
@@ -101,7 +143,7 @@ public Action UpdatePrisonersInfoTimer(Handle timer)
 		if(iRebelCount < 1)
 			Format(szFullFormat, sizeof(szFullFormat), "%s", szFormatFreeDay);
 		else
-			Format(szFullFormat, sizeof(szFullFormat), "%s\n%s", szFormatFreeDay, szFormatRebel);
+			Format(szFullFormat, sizeof(szFullFormat), "%s\n\n%s", szFormatFreeDay, szFormatRebel);
 	}
 	
 	SetHudTextParams(0.5, 0.06, 1.1, 255, 255, 110, 0);
@@ -128,4 +170,4 @@ public Action UpdateCurrencyTimer(Handle timer)
 	}
 	
 	return Plugin_Continue;
-}
+}*/

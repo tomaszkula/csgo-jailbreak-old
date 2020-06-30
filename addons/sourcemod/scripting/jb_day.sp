@@ -7,6 +7,7 @@
 #define PLUGIN_DESCRIPTION ""
 #define PLUGIN_VERSION "1.0.0"
 
+GlobalForward g_OnDayForward;
 int g_iDay;
 
 public Plugin myinfo = 
@@ -27,18 +28,29 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_ma
 public void OnPluginStart()
 {
 	HookEvent("round_start", RoundStartEvent);
+	
+	g_OnDayForward = CreateGlobalForward("OnDay", ET_Event, Param_Cell);
 }
 
 public void OnMapStart()
 {
-	g_iDay = 0;
+	SetDay(-1);
 }
 
 public Action RoundStartEvent(Event event, const char[] name, bool dontBroadcast)
 {
-	g_iDay++;
+	SetDay(g_iDay + 1);
 	
 	return Plugin_Continue;
+}
+
+void SetDay(int iDay)
+{
+	g_iDay = iDay;
+	
+	Call_StartForward(g_OnDayForward);
+	Call_PushCell(iDay);
+	Call_Finish();
 }
 
 /////////////////////////////////////////////////////////////

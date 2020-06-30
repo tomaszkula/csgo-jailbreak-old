@@ -58,6 +58,8 @@ public void OnClientDisconnect_Post(int iClient)
 {
 	JB_RemoveFreeDay(iClient);
 	g_bNextRoundFreeDay[iClient] = false;
+	
+	CheckLastFreeDay();
 }
 
 public Action OnTakeDamageSDKHook(int victim, int& attacker, int& inflictor, float& damage, int& damagetype)
@@ -91,6 +93,8 @@ public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcas
 	
 	if(JB_HasFreeDay(iVictim))
 		JB_RemoveFreeDay(iVictim);
+		
+	CheckLastFreeDay();
 		
 	return Plugin_Continue;
 }
@@ -144,6 +148,31 @@ public Action UpdateFreeDayTimer(Handle timer, int iClient)
 	return Plugin_Continue;
 }
 
+public void CheckLastFreeDay()
+{
+	int iFreeDaysClients[MAXPLAYERS], iFreeDaysCount = 0, iCount = 0;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if(!IsUserValid(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_T)
+			continue;
+		
+		if(JB_HasFreeDay(i))
+		{
+			iFreeDaysClients[iFreeDaysCount] = i;
+			iFreeDaysCount++;
+		}
+		else
+		{
+			iCount++;
+			if(iCount > 1)
+				return;
+		}
+	}
+	
+	for (int i = 0; i < iFreeDaysCount; i++)
+		ForcePlayerSuicide(iFreeDaysClients[i]);
+}
+
 /////////////////////////////////////////////////////////////
 ////////////////////////// NATIVES //////////////////////////
 /////////////////////////////////////////////////////////////
@@ -184,6 +213,8 @@ public int AddFreeDay(Handle plugin, int argc)
 	Call_StartForward(g_OnAddFreeDayForward);
 	Call_PushCell(iClient);
 	Call_Finish();
+	
+	CheckLastFreeDay();
 }
 
 public int RemoveFreeDay(Handle plugin, int argc)

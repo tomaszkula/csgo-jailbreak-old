@@ -3,12 +3,26 @@
 
 #define JB_PREFIX " \x04[JB]\x01"
 
-#define MAX_TEXT_LENGTH 128
+#define MAX_TEXT_LENGTH 512
 
 #define EF_BONEMERGE (1 << 0)
 #define EF_NOSHADOWS (1 << 4)
 #define EF_PARENT_ANIMATES (1 << 9)
 #define EF_NORECEIVESHADOWS (1 << 6)
+
+
+enum
+{
+	NONE, WARM_UP, GAME, NORMAL
+}
+
+
+
+// Called after round_start and day number calculation
+forward void OnDay(int iDay);
+
+// Called after day mode calculation
+forward void OnDayMode(int iOldDayMode, int iNewDayMode);
 
 // Called when iClient got freeday
 forward void OnAddFreeDay(int iClient);
@@ -27,7 +41,21 @@ native int JB_GetDay();
  * @param day     		day number
  * @param dayName		returned day name
  */
-native void JB_GetDayName(int day, char[] dayName);
+native void JB_GetDayName(int iDay, char[] szDayName);
+
+// Returns day mode
+native int JB_GetDayMode();
+
+/*
+ * Returns day mode name
+ *
+ * @param iDayMode     		day mode
+ * @param szDayModeName		returned day mode name
+ */
+native void JB_GetDayModeName(int iDayMode, char[] szDayModeName)
+
+// Returns remaining god mode time
+native int JB_GetGodModeTime();
 
 
 

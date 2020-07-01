@@ -1,0 +1,15 @@
+"VertexLitGeneric"
+{
+	"$baseTexture" "models/player/kuristaja/jailbreak/prisoner7/murphy_hospital_clothes_d"
+   	"$bumpmap"    "models/player/kuristaja/jailbreak/prisoner7/murphy_hospital_clothes_normal"
+
+	"$phong" "1"
+
+	"$phongexponent" "20"
+	"$phongboost" ".01"
+	"$phongfresnelranges" "[5 6 8]"
+	"$PhongAlbedoTint" "1"
+
+}
+
+

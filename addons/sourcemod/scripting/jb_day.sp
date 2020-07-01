@@ -27,7 +27,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_ma
 
 public void OnPluginStart()
 {
-	HookEvent("round_start", RoundStartEvent);
+	HookEvent("round_prestart", RoundPrestartEvent);
 	
 	g_OnDayForward = CreateGlobalForward("OnDay", ET_Event, Param_Cell);
 }
@@ -37,7 +37,7 @@ public void OnMapStart()
 	SetDay(-1);
 }
 
-public Action RoundStartEvent(Event event, const char[] name, bool dontBroadcast)
+public Action RoundPrestartEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	SetDay(g_iDay + 1);
 	

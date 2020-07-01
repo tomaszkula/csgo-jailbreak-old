@@ -27,27 +27,29 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_ma
 	CreateNative("JB_GetGodModeTime", GetGodModeTime);
 }
 
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
+{
+	if(iOldDayMode == WARM_UP)
+	{
+		SetGodMode(false);
+		
+		UnhookEvent("player_spawn", PlayerSpawnEvent);
+	}
+	
+	if(iNewDayMode == WARM_UP)
+	{
+		SetGodMode(true);
+		
+		HookEvent("player_spawn", PlayerSpawnEvent);
+	}
+}
+
 public Action PlayerSpawnEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	int iClient = GetClientOfUserId(event.GetInt("userid"));
 	SetGodModeClient(iClient, g_bGodMode)
 	
 	return Plugin_Continue;
-}
-
-public void OnDayMode(int iOldDayMode, int iNewDayMode)
-{
-	if(iOldDayMode == WARM_UP)
-	{
-		UnhookEvent("player_spawn", PlayerSpawnEvent);
-		SetGodMode(false);
-	}
-	
-	if(iNewDayMode == WARM_UP)
-	{
-		HookEvent("player_spawn", PlayerSpawnEvent);
-		SetGodMode(true);
-	}
 }
 
 public Action GodModeTimer(Handle timer)

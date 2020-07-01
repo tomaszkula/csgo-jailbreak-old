@@ -1,0 +1,14 @@
+vertexlitgeneric
+{
+	// PANTS
+
+	$baseTexture "models/player/kuristaja/jailbreak/guard4/femalecop_2_d"
+	$bumpmap "models/player/kuristaja/jailbreak/guard4/femalecop_2_normal"
+
+	"$phong" "1"
+	"$phongexponent" 5
+	"$phongboost" "0.05"
+	"$phongfresnelranges"	"[5 6 8]"
+	"$PhongAlbedoTint" "1"
+
+}

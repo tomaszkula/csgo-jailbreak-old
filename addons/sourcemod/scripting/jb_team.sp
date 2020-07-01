@@ -31,9 +31,6 @@ public void OnPluginStart()
 	AddCommandListener(JoinTeamCmd, "jointeam");
 	AddCommandListener(TeamMenuCmd, "xd");
 	AddCommandListener(TeamMenuCmd, "teammenu");
-	//AddCommandListener(TeamMenuCmd, "teammenu1");
-	
-	//RegConsoleCmd("teammenu", Command_Test);
 }
 
 public void OnMapStart()

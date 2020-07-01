@@ -14,7 +14,7 @@
 #define GUN_5 "weapon_galilar"
 #define GUN_6 "weapon_famas"
 
-bool g_bGun[MAXPLAYERS + 1];
+bool g_bIsBlocked = true, g_bGun[MAXPLAYERS + 1];
 
 public Plugin myinfo = 
 {
@@ -27,10 +27,6 @@ public Plugin myinfo =
 
 public void OnPluginStart()
 {
-	HookEvent("round_end", RoundEndEvent);
-	HookEvent("player_spawn", PlayerSpawnEvent);
-	HookEvent("player_death", PlayerDeathEvent);
-	
 	RegConsoleCmd("bronie", GunsMenuCmd);
 	RegConsoleCmd("guns", GunsMenuCmd);
 }
@@ -41,15 +37,47 @@ public void OnMapStart()
 		g_bGun[i] = false;
 }
 
-public void OnClientDisconnect_Post(int iClient)
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
 {
-	g_bGun[iClient] = false;
+	if(iOldDayMode == WARM_UP || iOldDayMode == NORMAL)
+	{
+		g_bIsBlocked = true;
+		for (int i = 1; i <= MaxClients; i++)
+			g_bGun[i] = false;
+		
+		UnhookEvent("round_prestart", RoundPrestartEvent);
+		UnhookEvent("player_team", PlayerTeamEvent);
+		UnhookEvent("player_spawn", PlayerSpawnEvent);
+		UnhookEvent("player_death", PlayerDeathEvent);
+	}
+	
+	if(iNewDayMode == WARM_UP || iNewDayMode == NORMAL)
+	{
+		g_bIsBlocked = false;
+		
+		HookEvent("round_prestart", RoundPrestartEvent);
+		HookEvent("player_team", PlayerTeamEvent);
+		HookEvent("player_spawn", PlayerSpawnEvent);
+		HookEvent("player_death", PlayerDeathEvent);
+	}
 }
 
-public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
+public Action RoundPrestartEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	for (int i = 1; i <= MaxClients; i++)
 		g_bGun[i] = false;
+	
+	return Plugin_Continue;
+}
+
+public Action PlayerTeamEvent(Event event, const char[] name, bool dontBroadcast)
+{
+	bool disconnected = event.GetBool("disconnect");
+	if(disconnected)
+	{
+		int iClient = GetClientOfUserId(event.GetInt("userid"));
+		g_bGun[iClient] = false;
+	}
 	
 	return Plugin_Continue;
 }
@@ -62,7 +90,7 @@ public Action PlayerSpawnEvent(Event event, const char[] name, bool dontBroadcas
 		g_bGun[iClient] = true;
 		DisplayGunsMenu(iClient);
 	}
-		
+	
 	return Plugin_Continue;
 }
 
@@ -76,15 +104,17 @@ public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcas
 
 public Action GunsMenuCmd(int iClient, int args)
 {
-	DisplayGunsMenu(iClient);
+	if(g_bIsBlocked || !IsUserValid(iClient) || !IsPlayerAlive(iClient) || GetClientTeam(iClient) != CS_TEAM_CT || !g_bGun[iClient])
+		return Plugin_Continue;
 	
+	DisplayGunsMenu(iClient);
 	return Plugin_Handled;
 }
 
 
 public void DisplayGunsMenu(int iClient)
 {
-	if(!IsUserValid(iClient) || GetClientTeam(iClient) != CS_TEAM_CT || !g_bGun[iClient])
+	if(g_bIsBlocked || !IsUserValid(iClient) || !IsPlayerAlive(iClient) || GetClientTeam(iClient) != CS_TEAM_CT || !g_bGun[iClient])
 		return;
 	
 	Menu menu = CreateMenu(GunsMenuHandler);
@@ -104,7 +134,7 @@ public int GunsMenuHandler(Menu menu, MenuAction action, int iClient, int param2
 	{
 		case MenuAction_Select:
 		{
-			if(!IsUserValid(iClient) || GetClientTeam(iClient) != CS_TEAM_CT || !g_bGun[iClient])
+			if(g_bIsBlocked || !IsUserValid(iClient) || !IsPlayerAlive(iClient) || GetClientTeam(iClient) != CS_TEAM_CT || !g_bGun[iClient])
 				return -1;
 				
 			g_bGun[iClient] = false;
@@ -123,9 +153,7 @@ public int GunsMenuHandler(Menu menu, MenuAction action, int iClient, int param2
 		}
 		
 		case MenuAction_End:
-		{
 			delete menu;
-		}
 	}
 	
 	return 0;

@@ -8,7 +8,7 @@
 #define PLUGIN_VERSION "1.0.0"
 
 GlobalForward g_OnAddRebelForward;
-bool g_bIsRebel[MAXPLAYERS + 1];
+bool g_bIsBlocked = true, g_bIsRebel[MAXPLAYERS + 1];
 int g_iGlowEntity[MAXPLAYERS + 1];
 
 public Plugin myinfo = 
@@ -30,27 +30,58 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_ma
 
 public void OnPluginStart()
 {
-	HookEvent("round_end", RoundEndEvent);
-	HookEvent("player_death", PlayerDeathEvent);
-	
 	g_OnAddRebelForward = CreateGlobalForward("OnAddRebel", ET_Event, Param_Cell);
 }
 
 public void OnMapStart()
 {
 	for (int i = 1; i <= MaxClients; i++)
-		JB_RemoveRebel(i);
+		if(JB_IsRebel(i))
+			JB_RemoveRebel(i);
 }
 
-public void OnClientDisconnect_Post(int iClient)
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
 {
-	JB_RemoveRebel(iClient);
+	if(iOldDayMode == NORMAL)
+	{
+		g_bIsBlocked = true;
+		for (int i = 1; i <= MaxClients; i++)
+			if(JB_HasFreeDay(i))
+				JB_RemoveFreeDay(i);
+		
+		UnhookEvent("round_prestart", RoundPrestartEvent);
+		UnhookEvent("player_team", PlayerTeamEvent);
+		UnhookEvent("player_death", PlayerDeathEvent);
+	}
+	
+	if(iNewDayMode == NORMAL)
+	{
+		g_bIsBlocked = false;
+		
+		HookEvent("round_prestart", RoundPrestartEvent);
+		HookEvent("player_team", PlayerTeamEvent);
+		HookEvent("player_death", PlayerDeathEvent);
+	}
 }
 
-public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
+public Action RoundPrestartEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	for (int i = 1; i <= MaxClients; i++)
-		JB_RemoveRebel(i);
+		if(JB_IsRebel(i))
+			JB_RemoveRebel(i);
+	
+	return Plugin_Continue;
+}
+
+public Action PlayerTeamEvent(Event event, const char[] name, bool dontBroadcast)
+{
+	bool disconnected = event.GetBool("disconnect");
+	if(disconnected)
+	{
+		int iClient = GetClientOfUserId(event.GetInt("userid"));
+		if(JB_IsRebel(iClient))
+			JB_RemoveRebel(iClient);
+	}
 	
 	return Plugin_Continue;
 }
@@ -59,10 +90,9 @@ public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcas
 {
 	int iVictim = GetClientOfUserId(event.GetInt("userid"));
 	int iKiller = GetClientOfUserId(event.GetInt("attacker"));
-	
 	if(GetClientTeam(iVictim) == CS_TEAM_CT && GetClientTeam(iKiller) == CS_TEAM_T && !JB_IsRebel(iKiller))
 		JB_AddRebel(iKiller);
-	else if(GetClientTeam(iVictim) == CS_TEAM_T && JB_IsRebel(iVictim))
+	if(JB_IsRebel(iVictim))
 		JB_RemoveRebel(iVictim);
 		
 	return Plugin_Continue;
@@ -74,7 +104,7 @@ public int RebelMenuHandler(Menu menu, MenuAction action, int iClient, int iItem
 	{
 		case MenuAction_Select:
 		{
-			if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+			if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
 				return -1;
 			
 			char szItemInfo[MAX_TEXT_LENGTH];
@@ -108,7 +138,7 @@ public int RebelMenuHandler(Menu menu, MenuAction action, int iClient, int iItem
 public int DisplayRebelMenu(Handle plugin, int argc)
 {
 	int iClient = GetNativeCell(1);
-	if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+	if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
 		return;
 	
 	Menu menu = CreateMenu(RebelMenuHandler, MENU_ACTIONS_ALL);
@@ -145,11 +175,8 @@ public int RemoveRebel(Handle plugin, int argc)
 	int iClient = GetNativeCell(1);
 	
 	g_bIsRebel[iClient] = false;
-	if(g_iGlowEntity[iClient] != -1)
-	{
-		RemoveDynamicGlow(g_iGlowEntity[iClient]);
-		g_iGlowEntity[iClient] = -1;
-	}
+	RemoveDynamicGlow(g_iGlowEntity[iClient]);
+	g_iGlowEntity[iClient] = -1;
 }
 
 public int IsRebel(Handle plugin, int argc)

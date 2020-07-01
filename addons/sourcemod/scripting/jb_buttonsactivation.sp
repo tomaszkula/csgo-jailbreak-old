@@ -26,7 +26,7 @@ public Action RoundStartEvent(Event event, const char[] name, bool dontBroadcast
 	int iEntity = -1;
 	while ((iEntity = FindEntityByClassname(iEntity, "func_button")) != -1)
 	{
-		SetEntProp(iEntity, Prop_Data, "m_spawnflags", GetEntProp(iEntity, Prop_Data, "m_spawnflags") | 512);
+		SetEntProp(iEntity, Prop_Data, "m_spawnflags", GetEntProp(iEntity, Prop_Data, "m_spawnflags") | 32 | 512);
 		SDKHook(iEntity, SDKHook_OnTakeDamage, OnTakeDamageSDKHook);
 	}
 	

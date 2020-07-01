@@ -72,6 +72,6 @@ public int DisplayAdminMenu(Handle plugin, int argc)
 	Menu menu = CreateMenu(AdminMenuHandler, MENU_ACTIONS_ALL);
 	menu.SetTitle("[Menu] Admin");
 	menu.AddItem(ADMINMENU_REVIVEMENU, "Ożyw gracza");
-	menu.AddItem(ADMINMENU_BINDCELLS, "Ustaw przycisk cel");
+	menu.AddItem(ADMINMENU_BINDCELLS, "Ustaw przycisk otwarcia cel");
 	menu.Display(iClient, MENU_TIME_FOREVER);
 }

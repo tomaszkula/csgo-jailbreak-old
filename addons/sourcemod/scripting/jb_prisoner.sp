@@ -14,46 +14,9 @@
 #define PRISONERMENU_OTHERS "others"
 #define PRISONERMENU_ADMINMENU "admin_menu"
 
-char g_szPrisonerModels[][MAX_TEXT_LENGTH] = 
-{
-	{"models/player/custom_player/kuristaja/jailbreak/prisoner1/prisoner1.mdl"},
-};
-
-char g_szPrisonerModelsAll[][MAX_TEXT_LENGTH] = 
-{
-	{"models/player/custom_player/kuristaja/jailbreak/prisoner1/prisoner1.dx90.vtx"},
-	{"models/player/custom_player/kuristaja/jailbreak/prisoner1/prisoner1.mdl"},
-	{"models/player/custom_player/kuristaja/jailbreak/prisoner1/prisoner1.phy"},
-	{"models/player/custom_player/kuristaja/jailbreak/prisoner1/prisoner1.vvd"},
-	{"models/player/custom_player/kuristaja/jailbreak/prisoner1/prisoner1_arms.dx90.vtx"},
-	{"models/player/custom_player/kuristaja/jailbreak/prisoner1/prisoner1_arms.mdl"},
-	{"models/player/custom_player/kuristaja/jailbreak/prisoner1/prisoner1_arms.vvd"},
-	{"materials/models/player/kuristaja/jailbreak/prisoner1/eye_d.vmt"},
-	{"materials/models/player/kuristaja/jailbreak/prisoner1/prisoner_lt_bottom_d.vmt"},
-	{"materials/models/player/kuristaja/jailbreak/prisoner1/prisoner_lt_head_d.vmt"},
-	{"materials/models/player/kuristaja/jailbreak/prisoner1/prisoner_lt_top_d.vmt"},
-	{"materials/models/player/kuristaja/jailbreak/prisoner1/prisoners_torso_d.vmt"},
-	{"materials/models/player/kuristaja/jailbreak/prisoner1/eye_d.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/prisoner1/prisoner_lt_bottom_d.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/prisoner1/prisoner_lt_bottom_normal.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/prisoner1/prisoner_lt_head_normal.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/prisoner1/prisoner_lt_top_d.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/prisoner1/prisoner_lt_top_normal.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/prisoner1/prisoners_torso_d.vtf"},
-	
-	{"materials/models/player/kuristaja/jailbreak/shared/brown_eye01_an_d.vmt"},
-	{"materials/models/player/kuristaja/jailbreak/shared/police_body_d.vmt"},
-	{"materials/models/player/kuristaja/jailbreak/shared/prisoner1_body.vmt"},
-	{"materials/models/player/kuristaja/jailbreak/shared/tex_0086_0.vmt"},
-	{"materials/models/player/kuristaja/jailbreak/shared/brown_eye_normal.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/shared/brown_eye01_an_d.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/shared/police_body_d.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/shared/police_body_normal.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/shared/prisoner1_body.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/shared/prisoner1_body_normal.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/shared/tex_0086_0.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/shared/tex_0086_1.vtf"}
-}
+char g_szPrisonerModels[MAX_SKINS_COUNT][MAX_TEXT_LENGTH];
+int g_iPrisonerModelsCount;
+bool g_bIsBlocked = true;
 
 public Plugin myinfo = 
 {
@@ -73,11 +36,60 @@ public void OnPluginStart()
 
 public void OnMapStart()
 {
-	for (int i = 0; i < sizeof(g_szPrisonerModelsAll); i++)
-		AddFileToDownloadsTable(g_szPrisonerModelsAll[i]);
+	g_iPrisonerModelsCount = 0;
 	
-	for (int i = 0; i < sizeof(g_szPrisonerModels); i++)
-		PrecacheModel(g_szPrisonerModels[i], true);
+	char szConfigPath[MAX_TEXT_LENGTH];
+	BuildPath(Path_SM, szConfigPath, sizeof(szConfigPath), "configs/tomkul777/jailbreak/models/prisoner_models.cfg");
+	if (FileExists(szConfigPath))
+	{
+		char szModelsDlPath[MAX_TEXT_LENGTH], szMaterialsDlPath[MAX_TEXT_LENGTH], szModelPath[MAX_TEXT_LENGTH], szArmsPath[MAX_TEXT_LENGTH], szFilePath[MAX_TEXT_LENGTH];
+		Handle kv = CreateKeyValues("Models");
+		if(FileToKeyValues(kv, szConfigPath))
+		{
+			KvGotoFirstSubKey(kv);
+			do
+			{
+				if(KvGetString(kv, "models_dl", szModelsDlPath, sizeof(szModelsDlPath)) && DirExists(szModelsDlPath) &&
+					KvGetString(kv, "materials_dl", szMaterialsDlPath, sizeof(szMaterialsDlPath)) && DirExists(szMaterialsDlPath))
+				{
+					Handle hDir = OpenDirectory(szModelsDlPath);
+					while(ReadDirEntry(hDir, szFilePath, sizeof(szFilePath)))
+					{
+						Format(szFilePath, sizeof(szFilePath), "%s/%s", szModelsDlPath, szFilePath);
+						AddFileToDownloadsTable(szFilePath);
+					}
+					CloseHandle(hDir);
+					
+					hDir = OpenDirectory(szMaterialsDlPath);
+					while(ReadDirEntry(hDir, szFilePath, sizeof(szFilePath)))
+					{
+						Format(szFilePath, sizeof(szFilePath), "%s/%s", szMaterialsDlPath, szFilePath);
+						AddFileToDownloadsTable(szFilePath);
+					}
+					CloseHandle(hDir);
+					
+					if (KvGetString(kv, "model", szModelPath, sizeof(szModelPath)))
+					{
+						g_szPrisonerModels[g_iPrisonerModelsCount] = szModelPath;
+						g_iPrisonerModelsCount++;
+						
+						PrecacheModel(szModelPath, true);
+					}
+				}
+			} while (KvGotoNextKey(kv));
+			KvRewind(kv);
+		}
+		CloseHandle(kv);
+	}
+}
+
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
+{
+	if(iOldDayMode == NORMAL)
+		g_bIsBlocked = true;
+	
+	if(iNewDayMode == NORMAL)
+		g_bIsBlocked = false;
 }
 
 public Action PlayerSpawnEvent(Event event, const char[] name, bool dontBroadcast)
@@ -85,7 +97,11 @@ public Action PlayerSpawnEvent(Event event, const char[] name, bool dontBroadcas
 	int iClient = GetClientOfUserId(event.GetInt("userid"));
 	if (GetClientTeam(iClient) == CS_TEAM_T)
 	{
-		SetEntityModel(iClient, g_szPrisonerModels[0][0]);
+		if(g_iPrisonerModelsCount > 0)
+		{
+			int iSkin = GetRandomInt(0, g_iPrisonerModelsCount - 1);
+			SetEntityModel(iClient, g_szPrisonerModels[iSkin]);
+		}
 		
 		int iWeapon;
 		for(int i = 0; i < 5; i++)
@@ -106,10 +122,11 @@ public Action PlayerSpawnEvent(Event event, const char[] name, bool dontBroadcas
 
 public Action MenuCmd(int iClient, int args)
 {
-	if(GetClientTeam(iClient) == CS_TEAM_T)
-		DisplayPrisonerMenu(iClient);
+	if(!IsUserValid(iClient) || !IsPlayerAlive(iClient) || GetClientTeam(iClient) != CS_TEAM_T)
+		return Plugin_Continue;
 	
-	return Plugin_Continue;
+	DisplayPrisonerMenu(iClient);
+	return Plugin_Handled;
 }
 
 public void DisplayPrisonerMenu(int iClient)
@@ -139,17 +156,36 @@ public int PrisonerMenuHandler(Menu menu, MenuAction action, int iClient, int iI
 			
 			char szItemInfo[MAX_TEXT_LENGTH];
 			menu.GetItem(iItem, szItemInfo, sizeof(szItemInfo)); 
-			if(StrEqual(szItemInfo, PRISONERMENU_STEALGUN))
+			
+			if(g_bIsBlocked)
 			{
-				FakeClientCommand(iClient, "steal");
-				DisplayPrisonerMenu(iClient);
+				if(StrEqual(szItemInfo, PRISONERMENU_HATS))
+					return -1;
+				else if(StrEqual(szItemInfo, PRISONERMENU_ROULETTE))
+					return -1;
+				else if(StrEqual(szItemInfo, PRISONERMENU_SHOP))
+					return -1;
+				else if(StrEqual(szItemInfo, PRISONERMENU_STEALGUN))
+					return -1;
 			}
-			else if(StrEqual(szItemInfo, PRISONERMENU_ADMINMENU))
+			else
 			{
-				if(GetAdminFlag(GetUserAdmin(iClient), Admin_Ban))
-					JB_DisplayAdminMenu(iClient);
-				else
+				if(StrEqual(szItemInfo, PRISONERMENU_STEALGUN))
+				{
+					FakeClientCommand(iClient, "steal");
 					DisplayPrisonerMenu(iClient);
+				}
+			}
+			
+			if(!GetAdminFlag(GetUserAdmin(iClient), Admin_Ban))
+			{
+				if(StrEqual(szItemInfo, PRISONERMENU_ADMINMENU))
+					return -1;
+			}
+			else
+			{
+				if(StrEqual(szItemInfo, PRISONERMENU_ADMINMENU))
+					JB_DisplayAdminMenu(iClient);
 			}
 		}
 		
@@ -158,14 +194,24 @@ public int PrisonerMenuHandler(Menu menu, MenuAction action, int iClient, int iI
 			char szItemInfo[MAX_TEXT_LENGTH];
 			menu.GetItem(iItem, szItemInfo, sizeof(szItemInfo)); 
 			
+			if(g_bIsBlocked)
+			{
+				if(StrEqual(szItemInfo, PRISONERMENU_HATS))
+					return ITEMDRAW_DISABLED;
+				else if(StrEqual(szItemInfo, PRISONERMENU_ROULETTE))
+					return ITEMDRAW_DISABLED;
+				else if(StrEqual(szItemInfo, PRISONERMENU_SHOP))
+					return ITEMDRAW_DISABLED;
+				else if(StrEqual(szItemInfo, PRISONERMENU_STEALGUN))
+					return ITEMDRAW_DISABLED;
+			}
+			
 			if(StrEqual(szItemInfo, PRISONERMENU_ADMINMENU) && !GetAdminFlag(GetUserAdmin(iClient), Admin_Ban))
 				return ITEMDRAW_DISABLED;
 		}
 		
 		case MenuAction_End:
-		{
 			delete menu;
-		}
 	}
 	
 	return 0;

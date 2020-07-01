@@ -1,0 +1,10 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models/player/kuristaja/jailbreak/guard4/eyes"
+	"$bumpmap" "models/player/kuristaja/jailbreak/guard4/eyes_normal"
+
+	"$phong" 			"1"
+	"$phongboost"			"50"
+	"$phongexponent"			"40"
+	"$phongfresnelranges"		"[.05 .1 .2]"
+}

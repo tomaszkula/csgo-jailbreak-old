@@ -12,28 +12,9 @@
 #define WARDENMENU_SEARCH "search"
 #define WARDENMENU_ADMINMENU "admin_menu"
 
-char g_szWardenModels[][MAX_TEXT_LENGTH] = 
-{
-	{"models/player/custom_player/kuristaja/jailbreak/guard1/guard1.mdl"}
-};
-
-char g_szWardenModelsAll[][MAX_TEXT_LENGTH] = 
-{
-	{"models/player/custom_player/kuristaja/jailbreak/guard1/guard1.dx90.vtx"},
-	{"models/player/custom_player/kuristaja/jailbreak/guard1/guard1.mdl"},
-	{"models/player/custom_player/kuristaja/jailbreak/guard1/guard1.phy"},
-	{"models/player/custom_player/kuristaja/jailbreak/guard1/guard1.vvd"},
-	{"models/player/custom_player/kuristaja/jailbreak/guard1/guard1_arms.dx90.vtx"},
-	{"models/player/custom_player/kuristaja/jailbreak/guard1/guard1_arms.mdl"},
-	{"models/player/custom_player/kuristaja/jailbreak/guard1/guard1_arms.vvd"},
-	{"materials/models/player/kuristaja/jailbreak/guard1/hair01_ao_d.vmt"},
-	{"materials/models/player/kuristaja/jailbreak/guard1/hair01_ao_d2.vmt"},
-	{"materials/models/player/kuristaja/jailbreak/guard1/sewell01_head01_au_d.vmt"},
-	{"materials/models/player/kuristaja/jailbreak/guard1/hair01_ao_d.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/guard1/hair01_ao_normal.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/guard1/sewell01_head01_au_d.vtf"},
-	{"materials/models/player/kuristaja/jailbreak/guard1/sewell01_head01_au_normal.vtf"}
-}
+char g_szWardenModels[MAX_SKINS_COUNT][MAX_TEXT_LENGTH];
+int g_iWardenModelsCount;
+bool g_bIsBlocked = true;
 
 public Plugin myinfo = 
 {
@@ -53,11 +34,60 @@ public void OnPluginStart()
 
 public void OnMapStart()
 {
-	for (int i = 0; i < sizeof(g_szWardenModelsAll); i++)
-		AddFileToDownloadsTable(g_szWardenModelsAll[i]);
+	g_iWardenModelsCount = 0;
 	
-	for (int i = 0; i < sizeof(g_szWardenModels); i++)
-		PrecacheModel(g_szWardenModels[i], true);
+	char szConfigPath[MAX_TEXT_LENGTH];
+	BuildPath(Path_SM, szConfigPath, sizeof(szConfigPath), "configs/tomkul777/jailbreak/models/warden_models.cfg");
+	if (FileExists(szConfigPath))
+	{
+		char szModelsDlPath[MAX_TEXT_LENGTH], szMaterialsDlPath[MAX_TEXT_LENGTH], szModelPath[MAX_TEXT_LENGTH], szArmsPath[MAX_TEXT_LENGTH], szFilePath[MAX_TEXT_LENGTH];
+		Handle kv = CreateKeyValues("Models");
+		if(FileToKeyValues(kv, szConfigPath))
+		{
+			KvGotoFirstSubKey(kv);
+			do
+			{
+				if(KvGetString(kv, "models_dl", szModelsDlPath, sizeof(szModelsDlPath)) && DirExists(szModelsDlPath) &&
+					KvGetString(kv, "materials_dl", szMaterialsDlPath, sizeof(szMaterialsDlPath)) && DirExists(szMaterialsDlPath))
+				{
+					Handle hDir = OpenDirectory(szModelsDlPath);
+					while(ReadDirEntry(hDir, szFilePath, sizeof(szFilePath)))
+					{
+						Format(szFilePath, sizeof(szFilePath), "%s/%s", szModelsDlPath, szFilePath);
+						AddFileToDownloadsTable(szFilePath);
+					}
+					CloseHandle(hDir);
+					
+					hDir = OpenDirectory(szMaterialsDlPath);
+					while(ReadDirEntry(hDir, szFilePath, sizeof(szFilePath)))
+					{
+						Format(szFilePath, sizeof(szFilePath), "%s/%s", szMaterialsDlPath, szFilePath);
+						AddFileToDownloadsTable(szFilePath);
+					}
+					CloseHandle(hDir);
+					
+					if (KvGetString(kv, "model", szModelPath, sizeof(szModelPath)))
+					{
+						g_szWardenModels[g_iWardenModelsCount] = szModelPath;
+						g_iWardenModelsCount++;
+						
+						PrecacheModel(szModelPath, true);
+					}
+				}
+			} while (KvGotoNextKey(kv));
+			KvRewind(kv);
+		}
+		CloseHandle(kv);
+	}
+}
+
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
+{
+	if(iOldDayMode == NORMAL)
+		g_bIsBlocked = true;
+	
+	if(iNewDayMode == NORMAL)
+		g_bIsBlocked = false;
 }
 
 public Action PlayerSpawnEvent(Event event, const char[] name, bool dontBroadcast)
@@ -65,7 +95,11 @@ public Action PlayerSpawnEvent(Event event, const char[] name, bool dontBroadcas
 	int iClient = GetClientOfUserId(event.GetInt("userid"));
 	if (GetClientTeam(iClient) == CS_TEAM_CT)
 	{
-		SetEntityModel(iClient, g_szWardenModels[0]);
+		if(g_iWardenModelsCount > 0)
+		{
+			int iSkin = GetRandomInt(0, g_iWardenModelsCount - 1);
+			SetEntityModel(iClient, g_szWardenModels[iSkin]);
+		}
 		
 		int iWeapon;
 		for(int i = 0; i < 5; i++)
@@ -86,10 +120,11 @@ public Action PlayerSpawnEvent(Event event, const char[] name, bool dontBroadcas
 
 public Action MenuCmd(int iClient, int args)
 {
-	if(GetClientTeam(iClient) == CS_TEAM_CT)
-		DisplayWardenMenu(iClient);
+	if(!IsUserValid(iClient) || !IsPlayerAlive(iClient) || GetClientTeam(iClient) != CS_TEAM_CT)
+		return Plugin_Continue;
 	
-	return Plugin_Continue;
+	DisplayWardenMenu(iClient);
+	return Plugin_Handled;
 }
 
 public void DisplayWardenMenu(int iClient)
@@ -102,7 +137,7 @@ public void DisplayWardenMenu(int iClient)
 	else menu.AddItem(WARDENMENU_BECOMESIMON, "Zostań Prowadzącym");
 	menu.AddItem(WARDENMENU_SEARCH, "Przeszukaj więźnia");
 	menu.AddItem(WARDENMENU_ADMINMENU, "Menu Admina");
-	menu.SetTitle("[Menu] Więzień");
+	menu.SetTitle("[Menu] Strażnik");
 	menu.Display(iClient, MENU_TIME_FOREVER);
 }
 
@@ -117,31 +152,48 @@ public int WardenMenuHandler(Menu menu, MenuAction action, int iClient, int iIte
 			
 			char szItemInfo[MAX_TEXT_LENGTH];
 			menu.GetItem(iItem, szItemInfo, sizeof(szItemInfo)); 
-			if(StrEqual(szItemInfo, WARDENMENU_BECOMESIMON))
+			
+			if(g_bIsBlocked)
 			{
-				if(JB_IsSimon(0))
-					JB_AddSimon(iClient);
-				
-				DisplayWardenMenu(iClient);
+				if(StrEqual(szItemInfo, WARDENMENU_BECOMESIMON))
+					return -1;
+				else if(StrEqual(szItemInfo, WARDENMENU_SIMONMENU))
+					return -1;
+				else if(StrEqual(szItemInfo, WARDENMENU_SEARCH))
+					return -1;
 			}
-			else if(StrEqual(szItemInfo, WARDENMENU_SIMONMENU))
+			else
 			{
-				if(JB_IsSimon(iClient))
-					JB_DisplaySimonMenu(iClient);
-				else
+				if(StrEqual(szItemInfo, WARDENMENU_BECOMESIMON))
+				{
+					if(JB_IsSimon(0))
+						JB_AddSimon(iClient);
+					
 					DisplayWardenMenu(iClient);
+				}
+				else if(StrEqual(szItemInfo, WARDENMENU_SIMONMENU))
+				{
+					if(JB_IsSimon(iClient))
+						JB_DisplaySimonMenu(iClient);
+					else
+						DisplayWardenMenu(iClient);
+				}
+				else if(StrEqual(szItemInfo, WARDENMENU_SEARCH))
+				{
+					FakeClientCommand(iClient, "search");
+					DisplayWardenMenu(iClient);
+				}
 			}
-			else if(StrEqual(szItemInfo, WARDENMENU_SEARCH))
+			
+			if(!GetAdminFlag(GetUserAdmin(iClient), Admin_Ban))
 			{
-				FakeClientCommand(iClient, "search");
-				DisplayWardenMenu(iClient);
+				if(StrEqual(szItemInfo, WARDENMENU_ADMINMENU))
+					return -1;
 			}
-			else if(StrEqual(szItemInfo, WARDENMENU_ADMINMENU))
+			else
 			{
-				if(GetAdminFlag(GetUserAdmin(iClient), Admin_Ban))
+				if(StrEqual(szItemInfo, WARDENMENU_ADMINMENU))
 					JB_DisplayAdminMenu(iClient);
-				else
-					DisplayWardenMenu(iClient);
 			}
 		}
 		
@@ -149,6 +201,16 @@ public int WardenMenuHandler(Menu menu, MenuAction action, int iClient, int iIte
 		{
 			char szItemInfo[MAX_TEXT_LENGTH];
 			menu.GetItem(iItem, szItemInfo, sizeof(szItemInfo)); 
+			
+			if(g_bIsBlocked)
+			{
+				if(StrEqual(szItemInfo, WARDENMENU_BECOMESIMON))
+					return ITEMDRAW_DISABLED;
+				else if(StrEqual(szItemInfo, WARDENMENU_SIMONMENU))
+					return ITEMDRAW_DISABLED;
+				else if(StrEqual(szItemInfo, WARDENMENU_SEARCH))
+					return ITEMDRAW_DISABLED;
+			}
 			
 			if(StrEqual(szItemInfo, WARDENMENU_BECOMESIMON) && !JB_IsSimon(0))
 				return ITEMDRAW_DISABLED;

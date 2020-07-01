@@ -1,0 +1,13 @@
+vertexlitgeneric
+{
+	// TRANSLUCENT
+	
+	$baseTexture "models/player/kuristaja/jailbreak/guard4/femalecop_hair_d"
+	//$bumpmap "models/player/kuristaja/jailbreak/guard4/femalecop_hair_normal"
+	
+	$nocull 1
+	$translucent 1
+	//$alphatest 1
+	//$no_draw 1
+
+}

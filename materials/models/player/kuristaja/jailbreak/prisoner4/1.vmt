@@ -1,0 +1,16 @@
+vertexlitgeneric
+{
+	"$baseTexture" "models\player\kuristaja\jailbreak\prisoner4\1"
+                "$bumpmap" "models\player\kuristaja\jailbreak\prisoner4\1_normal"
+
+$phong 1
+$phongboost ".85"
+$phongexponent 25
+//$phongtint "[.85 .85 1]"
+$phongfresnelranges "[.2 .5 5]" 
+
+
+$halflambert 0
+
+
+}

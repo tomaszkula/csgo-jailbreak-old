@@ -10,7 +10,7 @@
 #define FREEDAY_TIME 300
 
 GlobalForward g_OnAddFreeDayForward;
-bool g_bHasFreeDay[MAXPLAYERS + 1], g_bNextRoundFreeDay[MAXPLAYERS + 1];
+bool g_bIsBlocked = true, g_bHasFreeDay[MAXPLAYERS + 1], g_bNextRoundFreeDay[MAXPLAYERS + 1];
 int g_iGlowEntity[MAXPLAYERS + 1], g_iFreeDayTime[MAXPLAYERS + 1];
 Handle g_hFreeDayTimer[MAXPLAYERS + 1];
 
@@ -34,32 +34,89 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_ma
 
 public void OnPluginStart()
 {
-	HookEvent("round_end", RoundEndEvent);
-	HookEvent("player_death", PlayerDeathEvent);
-	
 	g_OnAddFreeDayForward = CreateGlobalForward("OnAddFreeDay", ET_Event, Param_Cell);
 }
 
 public void OnMapStart()
 {
 	for (int i = 1; i <= MaxClients; i++)
+		if(JB_HasFreeDay(i))
+			JB_RemoveFreeDay(i);
+}
+
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
+{
+	if(iOldDayMode == NORMAL)
 	{
-		JB_RemoveFreeDay(i);
-		g_bNextRoundFreeDay[i] = false;
+		g_bIsBlocked = true;
+		for (int i = 1; i <= MaxClients; i++)
+			if(JB_HasFreeDay(i))
+				JB_RemoveFreeDay(i);
+		
+		UnhookEvent("player_connect_full", PlayerConnectFullEvent);
+		UnhookEvent("round_prestart", RoundPrestartEvent);
+		UnhookEvent("player_team", PlayerTeamEvent);
+		UnhookEvent("player_death", PlayerDeathEvent);
+	}
+	
+	if(iNewDayMode == NORMAL)
+	{
+		g_bIsBlocked = false;
+		
+		HookEvent("player_connect_full", PlayerConnectFullEvent);
+		HookEvent("round_prestart", RoundPrestartEvent);
+		HookEvent("player_team", PlayerTeamEvent);
+		HookEvent("player_death", PlayerDeathEvent);
 	}
 }
 
-public void OnClientPostAdminCheck(int iClient)
+public void OnAddRebel(int iClient)
 {
-	SDKHook(iClient, SDKHook_OnTakeDamage, OnTakeDamageSDKHook); 
+	if(JB_HasFreeDay(iClient))
+		JB_RemoveFreeDay(iClient);
 }
 
-public void OnClientDisconnect_Post(int iClient)
+public Action PlayerConnectFullEvent(Event event, const char[] name, bool dontBroadcast)
 {
-	JB_RemoveFreeDay(iClient);
-	g_bNextRoundFreeDay[iClient] = false;
+	int iClient = GetClientOfUserId(event.GetInt("userid"));
+	SDKHook(iClient, SDKHook_OnTakeDamage, OnTakeDamageSDKHook);
 	
-	CheckLastFreeDay();
+	return Plugin_Continue;
+}
+
+public Action RoundPrestartEvent(Event event, const char[] name, bool dontBroadcast)
+{
+	for (int i = 1; i <= MaxClients; i++)
+		if(JB_HasFreeDay(i))
+			JB_RemoveFreeDay(i);
+	
+	return Plugin_Continue;
+}
+
+public Action PlayerTeamEvent(Event event, const char[] name, bool dontBroadcast)
+{
+	bool disconnected = event.GetBool("disconnect");
+	if(disconnected)
+	{
+		int iClient = GetClientOfUserId(event.GetInt("userid"));
+		if(JB_HasFreeDay(iClient))
+			JB_RemoveFreeDay(iClient);
+		
+		//CheckLastFreeDay();
+	}
+	
+	return Plugin_Continue;
+}
+
+public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcast)
+{
+	int iVictim = GetClientOfUserId(event.GetInt("userid"));
+	if(JB_HasFreeDay(iVictim))
+		JB_RemoveFreeDay(iVictim);
+	
+	//CheckLastFreeDay();
+		
+	return Plugin_Continue;
 }
 
 public Action OnTakeDamageSDKHook(int victim, int& attacker, int& inflictor, float& damage, int& damagetype)
@@ -70,42 +127,13 @@ public Action OnTakeDamageSDKHook(int victim, int& attacker, int& inflictor, flo
 	return Plugin_Continue;
 }
 
-public void OnAddRebel(int iClient)
-{
-	if(JB_HasFreeDay(iClient))
-		JB_RemoveFreeDay(iClient);
-}
-
-public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
-{
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		JB_RemoveFreeDay(i);
-		g_bNextRoundFreeDay[i] = false;
-	}
-	
-	return Plugin_Continue;
-}
-
-public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcast)
-{
-	int iVictim = GetClientOfUserId(event.GetInt("userid"));
-	
-	if(JB_HasFreeDay(iVictim))
-		JB_RemoveFreeDay(iVictim);
-		
-	CheckLastFreeDay();
-		
-	return Plugin_Continue;
-}
-
 public int FreeDayMenuHandler(Menu menu, MenuAction action, int iClient, int iItem)
 {
 	switch(action)
 	{
 		case MenuAction_Select:
 		{
-			if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+			if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
 				return -1;
 			
 			char szItemInfo[MAX_TEXT_LENGTH];
@@ -135,7 +163,7 @@ public int FreeDayMenuHandler(Menu menu, MenuAction action, int iClient, int iIt
 	return 0;
 }
 
-public Action UpdateFreeDayTimer(Handle timer, int iClient)
+public Action RemoveFreeDayTimer(Handle timer, int iClient)
 {
 	if(--g_iFreeDayTime[iClient] <= 0)
 	{
@@ -180,7 +208,7 @@ public void CheckLastFreeDay()
 public int DisplayFreeDayMenu(Handle plugin, int argc)
 {
 	int iClient = GetNativeCell(1);
-	if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+	if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
 		return;
 	
 	Menu menu = CreateMenu(FreeDayMenuHandler, MENU_ACTIONS_ALL);
@@ -208,7 +236,7 @@ public int AddFreeDay(Handle plugin, int argc)
 	g_iFreeDayTime[iClient] = FREEDAY_TIME;
 	g_iGlowEntity[iClient] = RenderDynamicGlow(iClient, "0 255 0");
 	
-	g_hFreeDayTimer[iClient] = CreateTimer(1.0, UpdateFreeDayTimer, iClient, TIMER_REPEAT);
+	g_hFreeDayTimer[iClient] = CreateTimer(1.0, RemoveFreeDayTimer, iClient, TIMER_REPEAT);
 	
 	Call_StartForward(g_OnAddFreeDayForward);
 	Call_PushCell(iClient);
@@ -230,11 +258,9 @@ public int RemoveFreeDay(Handle plugin, int argc)
 	
 	g_bHasFreeDay[iClient] = false;
 	g_iFreeDayTime[iClient] = 0;
-	if(g_iGlowEntity[iClient] != -1)
-	{
-		RemoveDynamicGlow(g_iGlowEntity[iClient]);
-		g_iGlowEntity[iClient] = -1;
-	}
+	
+	RemoveDynamicGlow(g_iGlowEntity[iClient]);
+	g_iGlowEntity[iClient] = -1;
 	
 	if(bSpawn)
 		CS_RespawnPlayer(iClient);

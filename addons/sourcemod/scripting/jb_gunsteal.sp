@@ -11,6 +11,7 @@
 #define STEAL_CHANCE 0.5
 #define STEAL_COOLDOWN 180
 
+bool g_bIsBlocked = true;
 int g_iStealCooldown[MAXPLAYERS + 1];
 Handle g_hStealGunTimer[MAXPLAYERS + 1];
 
@@ -25,9 +26,6 @@ public Plugin myinfo =
 
 public void OnPluginStart()
 {
-	HookEvent("round_end", RoundEndEvent);
-	HookEvent("player_death", PlayerDeathEvent);
-	
 	RegConsoleCmd("kradnij", StealCmd);
 	RegConsoleCmd("steal", StealCmd);
 }
@@ -35,36 +33,47 @@ public void OnPluginStart()
 public void OnMapStart()
 {
 	for (int i = 1; i <= MaxClients; i++)
+		ResetGunSteal(i);
+}
+
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
+{
+	if(iOldDayMode == NORMAL)
 	{
-		g_iStealCooldown[i] = 0;
-		if(g_hStealGunTimer[i] != INVALID_HANDLE)
-		{
-			KillTimer(g_hStealGunTimer[i]);
-			g_hStealGunTimer[i] = INVALID_HANDLE;
-	    }
+		g_bIsBlocked = true;
+		for (int i = 1; i <= MaxClients; i++)
+			ResetGunSteal(i);
+		
+		UnhookEvent("round_prestart", RoundPrestartEvent);
+		UnhookEvent("player_team", PlayerTeamEvent);
+		UnhookEvent("player_death", PlayerDeathEvent);
+	}
+	
+	if(iNewDayMode == NORMAL)
+	{
+		g_bIsBlocked = false;
+		
+		HookEvent("round_prestart", RoundPrestartEvent);
+		HookEvent("player_team", PlayerTeamEvent);
+		HookEvent("player_death", PlayerDeathEvent);
 	}
 }
 
-public void OnClientDisconnect_Post(int iClient)
-{
-	g_iStealCooldown[iClient] = 0;
-	if(g_hStealGunTimer[iClient] != INVALID_HANDLE)
-	{
-		KillTimer(g_hStealGunTimer[iClient]);
-		g_hStealGunTimer[iClient] = INVALID_HANDLE;
-    }
-}
-
-public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
+public Action RoundPrestartEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	for (int i = 1; i <= MaxClients; i++)
+		ResetGunSteal(i);
+	
+	return Plugin_Continue;
+}
+
+public Action PlayerTeamEvent(Event event, const char[] name, bool dontBroadcast)
+{
+	bool disconnected = event.GetBool("disconnect");
+	if(disconnected)
 	{
-		g_iStealCooldown[i] = 0;
-		if(g_hStealGunTimer[i] != INVALID_HANDLE)
-		{
-			KillTimer(g_hStealGunTimer[i]);
-			g_hStealGunTimer[i] = INVALID_HANDLE;
-	    }
+		int iClient = GetClientOfUserId(event.GetInt("userid"));
+		ResetGunSteal(iClient);
 	}
 	
 	return Plugin_Continue;
@@ -73,20 +82,14 @@ public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
 public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	int iVictim = GetClientOfUserId(event.GetInt("userid"));
-	
-	g_iStealCooldown[iVictim] = 0;
-	if(g_hStealGunTimer[iVictim] != INVALID_HANDLE)
-	{
-		KillTimer(g_hStealGunTimer[iVictim]);
-		g_hStealGunTimer[iVictim] = INVALID_HANDLE;
-    }
+	ResetGunSteal(iVictim);
 		
 	return Plugin_Continue;
 }
 
 public Action StealCmd(int iClient, int args)
 {
-	if(!IsUserValid(iClient) || !IsPlayerAlive(iClient) || GetClientTeam(iClient) != CS_TEAM_T || JB_HasFreeDay(iClient))
+	if(g_bIsBlocked || !IsUserValid(iClient) || !IsPlayerAlive(iClient) || GetClientTeam(iClient) != CS_TEAM_T || JB_HasFreeDay(iClient))
 		return Plugin_Handled;
 		
 	if(g_iStealCooldown[iClient] > 0)
@@ -152,10 +155,17 @@ public Action StealCmd(int iClient, int args)
 public Action StealGunTimer(Handle timer, any iClient)
 {
 	if(--g_iStealCooldown[iClient] <= 0)
+		ResetGunSteal(iClient);
+	
+	return Plugin_Continue;
+}
+
+void ResetGunSteal(int iClient)
+{
+	g_iStealCooldown[iClient] = 0;
+	if(g_hStealGunTimer[iClient] != INVALID_HANDLE)
 	{
 		KillTimer(g_hStealGunTimer[iClient]);
 		g_hStealGunTimer[iClient] = INVALID_HANDLE;
-	}
-	
-	return Plugin_Continue;
+    }
 }

@@ -12,7 +12,7 @@
 #define RANDOMMENU_NOREPEAT "no_repeat"
 #define RANDOMMENU_NOREPEAT_RESET "no_repeat_reset"
 
-bool g_bIsRandom[MAXPLAYERS + 1];
+bool g_bIsBlocked = true, g_bIsRandom[MAXPLAYERS + 1];
 
 public Plugin myinfo = 
 {
@@ -28,27 +28,51 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_ma
 	CreateNative("JB_DisplayRandomMenu", DisplayRandomMenu);
 }
 
-public void OnPluginStart()
-{
-	HookEvent("round_end", RoundEndEvent);
-	HookEvent("player_death", PlayerDeathEvent);
-}
-
 public void OnMapStart()
 {
 	for (int i = 1; i <= MaxClients; i++)
 		g_bIsRandom[i] = false;
 }
 
-public void OnClientDisconnect_Post(int iClient)
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
 {
-	g_bIsRandom[iClient] = false;
+	if(iOldDayMode == NORMAL)
+	{
+		g_bIsBlocked = true;
+		for (int i = 1; i <= MaxClients; i++)
+			g_bIsRandom[i] = false;
+		
+		UnhookEvent("round_prestart", RoundPrestartEvent);
+		UnhookEvent("player_team", PlayerTeamEvent);
+		UnhookEvent("player_death", PlayerDeathEvent);
+	}
+	
+	if(iNewDayMode == NORMAL)
+	{
+		g_bIsBlocked = false;
+		
+		HookEvent("round_prestart", RoundPrestartEvent);
+		HookEvent("player_team", PlayerTeamEvent);
+		HookEvent("player_death", PlayerDeathEvent);
+	}
 }
 
-public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
+public Action RoundPrestartEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	for (int i = 1; i <= MaxClients; i++)
 		g_bIsRandom[i] = false;
+	
+	return Plugin_Continue;
+}
+
+public Action PlayerTeamEvent(Event event, const char[] name, bool dontBroadcast)
+{
+	bool disconnected = event.GetBool("disconnect");
+	if(disconnected)
+	{
+		int iClient = GetClientOfUserId(event.GetInt("userid"));
+		g_bIsRandom[iClient] = false;
+	}
 	
 	return Plugin_Continue;
 }
@@ -67,7 +91,7 @@ public int RandomMenuHandler(Menu menu, MenuAction action, int iClient, int para
 	{
 		case MenuAction_Select:
 		{
-			if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+			if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
 				return -1;
 				
 			char szInfo[MAX_TEXT_LENGTH];
@@ -144,7 +168,7 @@ int RandomPrisoner(bool bRepeat = true)
 public int DisplayRandomMenu(Handle plugin, int argc)
 {
 	int iClient = GetNativeCell(1);
-	if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+	if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
 		return;
 	
 	Menu menu = CreateMenu(RandomMenuHandler, MENU_ACTIONS_ALL);

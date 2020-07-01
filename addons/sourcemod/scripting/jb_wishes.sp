@@ -11,7 +11,7 @@
 #define WISHESCONFIRMMENU_NO "no"
 
 int g_iLast;
-bool g_bWish;
+bool g_bIsBlocked = true, g_bWish = false;
 
 public Plugin myinfo = 
 {
@@ -24,8 +24,9 @@ public Plugin myinfo =
 
 public void OnPluginStart()
 {
-	HookEvent("round_end", RoundEndEvent);
-	HookEvent("player_death", PlayerDeathEvent);
+	RegConsoleCmd("zyczenie", CheckWishCmd);
+	RegConsoleCmd("wish", CheckWishCmd);
+	RegConsoleCmd("lr", CheckWishCmd);
 }
 
 public void OnMapStart()
@@ -34,15 +35,32 @@ public void OnMapStart()
 	g_bWish = false;
 }
 
-public void OnClientDisconnect(int iClient)
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
 {
-	if(GetClientTeam(iClient) != CS_TEAM_T)
-		return;
+	if(iOldDayMode == NORMAL)
+	{
+		g_bIsBlocked = true;
+		g_iLast = 0;
+		g_bWish = false;
+		
+		UnhookEvent("round_prestart", RoundPrestartEvent);
+		UnhookEvent("player_team", PlayerTeamEvent);
+		UnhookEvent("player_death", PlayerDeathEvent);
+		UnhookEvent("player_spawn", PlayerSpawnEvent);
+	}
 	
-	CheckWish();
+	if(iNewDayMode == NORMAL)
+	{
+		g_bIsBlocked = false;
+		
+		HookEvent("round_prestart", RoundPrestartEvent);
+		HookEvent("player_team", PlayerTeamEvent);
+		HookEvent("player_death", PlayerDeathEvent);
+		HookEvent("player_spawn", PlayerSpawnEvent);
+	}
 }
 
-public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
+public Action RoundPrestartEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	g_iLast = 0;
 	g_bWish = false;
@@ -50,25 +68,105 @@ public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
 	return Plugin_Continue;
 }
 
+public Action PlayerTeamEvent(Event event, const char[] name, bool dontBroadcast)
+{
+	if(g_bWish)
+		return Plugin_Continue;
+	
+	bool disconnected = event.GetBool("disconnect");
+	if(disconnected)
+	{
+		int iClient = GetClientOfUserId(event.GetInt("userid"));
+		if(GetClientTeam(iClient) != CS_TEAM_T)
+			return Plugin_Continue;
+		
+		CheckWish();
+	}
+	
+	return Plugin_Continue;
+}
+
 public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcast)
 {
+	if(g_bWish)
+		return Plugin_Continue;
+	
 	int iVictim = GetClientOfUserId(event.GetInt("userid"));
 	if(GetClientTeam(iVictim) != CS_TEAM_T)
 		return Plugin_Continue;
 	
 	CheckWish();
+		
 	return Plugin_Continue;
+}
+
+public Action PlayerSpawnEvent(Event event, const char[] name, bool dontBroadcast)
+{
+	if(!g_bWish)
+		return Plugin_Continue;
+	
+	int iClient = GetClientOfUserId(event.GetInt("userid"));
+	if(GetClientTeam(iClient) == CS_TEAM_T)
+	{
+		if(JB_GetPrisonersCount(true) > 1)
+		{
+			g_iLast = 0;
+			g_bWish = false;
+		}
+	}
+	
+	return Plugin_Continue;
+}
+
+public Action CheckWishCmd(int iClient, int args)
+{
+	if(g_bIsBlocked || !IsUserValid(iClient) || !IsPlayerAlive(iClient))
+		return Plugin_Continue;
+	
+	if(JB_IsSimon(iClient) && !g_bWish && IsUserValid(g_iLast))
+		DisplayWishesConfirmMenu(iClient);
+	
+	if(GetClientTeam(iClient) == CS_TEAM_T && g_bWish && iClient == g_iLast)
+		DisplayWishesMenu(iClient);
+	
+	return Plugin_Handled;
+}
+
+void CheckWish()
+{
+	g_iLast = 0;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if(!IsUserValid(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_T || JB_HasFreeDay(i) || JB_IsRebel(i))
+			continue;
+		
+		if(g_iLast == 0)
+			g_iLast = i;
+		else
+			return;
+	}
+	
+	if(g_iLast != 0)
+	{
+		char szLastName[MAX_TEXT_LENGTH];
+		GetClientName(g_iLast, szLastName, sizeof(szLastName));
+		PrintToChatAll("%s Został ostatni więzień \x07%s\x01.", JB_PREFIX, szLastName);
+		DisplayWishesConfirmMenu(JB_GetSimon());
+	}
 }
 
 public void DisplayWishesConfirmMenu(int iClient)
 {
-	if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+	if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
+		return;
+		
+	if(!IsUserValid(g_iLast) || !IsPlayerAlive(g_iLast))
 		return;
 	
 	Menu menu = CreateMenu(WishesConfirmMenuHandler, MENU_ACTIONS_ALL);
 	menu.AddItem(WISHESCONFIRMMENU_YES, "Tak");
 	menu.AddItem(WISHESCONFIRMMENU_NO, "Nie");
-	menu.SetTitle("[ Czy więzień powinien mieć życzenia? ]");
+	menu.SetTitle("[ Czy ostatni więzień powinien dostać życzenia? ]");
 	menu.ExitButton = false;
 	menu.Display(iClient, MENU_TIME_FOREVER);
 }
@@ -79,21 +177,28 @@ public int WishesConfirmMenuHandler(Menu menu, MenuAction action, int iClient, i
 	{
 		case MenuAction_Select:
 		{
-			if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+			if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
+				return -1;
+			
+			if(!IsUserValid(g_iLast) || !IsPlayerAlive(g_iLast))
 				return -1;
 			
 			char szItemInfo[MAX_TEXT_LENGTH];
 			menu.GetItem(iItem, szItemInfo, sizeof(szItemInfo));
+			
+			char szLastName[MAX_TEXT_LENGTH];
+			GetClientName(g_iLast, szLastName, sizeof(szLastName));
+			
 			if(StrEqual(szItemInfo, WISHESCONFIRMMENU_YES))
 			{
 				g_bWish = true;
 				DisplayWishesMenu(g_iLast);
-				PrintToChat(iClient, "%s Ostatni więzień otrzymał życzenie.", JB_PREFIX);
+				PrintToChatAll("%s Ostatni więzień \x07%s \x01otrzymał życzenie.", JB_PREFIX, szLastName);
 			}
 			else if(StrEqual(szItemInfo, WISHESCONFIRMMENU_NO))
 			{
 				g_bWish = false;
-				PrintToChat(iClient, "%s Ostatni więzień nie otrzymał życzenia", JB_PREFIX);
+				PrintToChatAll("%s Ostatni więzień \x07%s \x01nie otrzymał życzenia", JB_PREFIX, szLastName);
 			}
 		}
 		
@@ -106,7 +211,7 @@ public int WishesConfirmMenuHandler(Menu menu, MenuAction action, int iClient, i
 
 public void DisplayWishesMenu(int iClient)
 {
-	if(!IsUserValid(iClient) || g_iLast != iClient || !g_bWish)
+	if(g_bIsBlocked || !IsUserValid(iClient) || !g_bWish || iClient != g_iLast)
 		return;
 	
 	Menu menu = CreateMenu(WishesMenuHandler, MENU_ACTIONS_ALL);
@@ -123,7 +228,7 @@ public int WishesMenuHandler(Menu menu, MenuAction action, int iClient, int iIte
 	{
 		case MenuAction_Select:
 		{
-			if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+			if(g_bIsBlocked || !IsUserValid(iClient) || !g_bWish || iClient != g_iLast)
 				return -1;
 			
 			char szItemInfo[MAX_TEXT_LENGTH];
@@ -135,25 +240,4 @@ public int WishesMenuHandler(Menu menu, MenuAction action, int iClient, int iIte
 	}
 	
 	return 0;
-}
-
-public void CheckWish()
-{
-	g_iLast = 0;
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if(!IsUserValid(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_T)
-			continue;
-		
-		if(!JB_HasFreeDay(i))
-		{
-			if(g_iLast == 0)
-				g_iLast = i;
-			else
-				return;
-		}
-	}
-	
-	PrintToChatAll("%s Został ostatni więzień.", JB_PREFIX);
-	DisplayWishesConfirmMenu(JB_GetSimon());
 }

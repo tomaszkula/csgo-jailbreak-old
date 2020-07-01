@@ -18,8 +18,9 @@
 #define PRISONERSMANAGERMENU_FREEDAYMENU "freeday_menu"
 #define PRISONERSMANAGERMENU_REBELMENU "rebel_menu"
 
+bool g_bIsBlocked = true;
 int g_iSimon;
-Handle g_hAddSimonTimer;
+Handle g_hAddAutoSimonTimer;
 
 public Plugin myinfo = 
 {
@@ -35,44 +36,66 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_ma
 	CreateNative("JB_DisplaySimonMenu", DisplaySimonMenu);
 	CreateNative("JB_DisplayPrisonersManagerMenu", DisplayPrisonersManagerMenu);
 	CreateNative("JB_AddSimon", AddSimon);
+	CreateNative("JB_RemoveSimon", RemoveSimon);
 	CreateNative("JB_GetSimon", GetSimon);
 	CreateNative("JB_IsSimon", IsSimon);
 }
 
-public void OnPluginStart()
-{
-	HookEvent("round_freeze_end", RoundFreezeEndEvent);
-	HookEvent("round_end", RoundEndEvent);
-	HookEvent("player_death", PlayerDeathEvent);
-}
-
 public void OnMapStart()
 {
-	RemoveSimon();
+	JB_RemoveSimon();
 }
 
-public void OnClientDisconnect_Post(int iClient)
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
 {
-	if(JB_IsSimon(iClient))
-		RandomAddSimon();
+	if(iOldDayMode == NORMAL)
+	{
+		JB_RemoveSimon();
+		RefuseAutoSimonTimer();
+		g_bIsBlocked = true;
+		
+		UnhookEvent("round_prestart", RoundPrestartEvent);
+		UnhookEvent("round_freeze_end", RoundFreezeEndEvent);
+		UnhookEvent("player_team", PlayerTeamEvent);
+		UnhookEvent("player_death", PlayerDeathEvent);
+	}
+	
+	if(iNewDayMode == NORMAL)
+	{
+		JB_RemoveSimon();
+		g_bIsBlocked = false;
+		
+		HookEvent("round_prestart", RoundPrestartEvent);
+		HookEvent("round_freeze_end", RoundFreezeEndEvent);
+		HookEvent("player_team", PlayerTeamEvent);
+		HookEvent("player_death", PlayerDeathEvent);
+	}
+}
+
+public Action RoundPrestartEvent(Event event, const char[] name, bool dontBroadcast)
+{
+	RefuseAutoSimonTimer();
+	return Plugin_Continue;
 }
 
 public Action RoundFreezeEndEvent(Event event, const char[] name, bool dontBroadcast)
 {
-	g_hAddSimonTimer = CreateTimer(15.0, AddSimonTimer);
-	
+	g_hAddAutoSimonTimer = CreateTimer(15.0, AddAutoSimonTimer);
 	return Plugin_Continue;
 }
 
-public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
+public Action PlayerTeamEvent(Event event, const char[] name, bool dontBroadcast)
 {
-	if(g_hAddSimonTimer != INVALID_HANDLE)
+	bool disconnected = event.GetBool("disconnect");
+	if(disconnected)
 	{
-		KillTimer(g_hAddSimonTimer);
-		g_hAddSimonTimer = INVALID_HANDLE;
-    }
-    
-	RemoveSimon();
+		int iClient = GetClientOfUserId(event.GetInt("userid"));
+		if(JB_IsSimon(iClient))
+		{
+			JB_RemoveSimon();
+			AddRandomSimon();
+		}
+	}
 	
 	return Plugin_Continue;
 }
@@ -81,19 +104,47 @@ public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcas
 {
 	int iVictim = GetClientOfUserId(event.GetInt("userid"));
 	if(JB_IsSimon(iVictim))
-		RandomAddSimon();
+	{
+		JB_RemoveSimon();
+		AddRandomSimon();
+	}
 		
 	return Plugin_Continue;
 }
 
-public Action AddSimonTimer(Handle timer)
+public Action AddAutoSimonTimer(Handle timer)
 {
-	g_hAddSimonTimer = INVALID_HANDLE;
+	g_hAddAutoSimonTimer = INVALID_HANDLE;
 	
 	if(JB_IsSimon(0))
-		RandomAddSimon();
+		AddRandomSimon();
 	
 	return Plugin_Continue;
+}
+
+void RefuseAutoSimonTimer()
+{
+	if(g_hAddAutoSimonTimer != INVALID_HANDLE)
+	{
+		KillTimer(g_hAddAutoSimonTimer);
+		g_hAddAutoSimonTimer = INVALID_HANDLE;
+    }
+}
+
+void AddRandomSimon()
+{
+	int iWardens[MAXPLAYERS], iWardensCount = 0;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if(!IsUserValid(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_CT)
+			continue;
+		
+		iWardens[iWardensCount] = i;
+		iWardensCount++;
+	}
+	
+	if(iWardensCount > 0)
+		JB_AddSimon(iWardens[GetRandomInt(0, iWardensCount - 1)]);
 }
 
 public int SimonMenuHandler(Menu menu, MenuAction action, int iClient, int iItem)
@@ -102,7 +153,7 @@ public int SimonMenuHandler(Menu menu, MenuAction action, int iClient, int iItem
 	{
 		case MenuAction_Select:
 		{
-			if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+			if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
 				return -1;
 			
 			char szItemInfo[MAX_TEXT_LENGTH];
@@ -134,7 +185,7 @@ public int PrisonersManagerHandler(Menu menu, MenuAction action, int iClient, in
 	{
 		case MenuAction_Select:
 		{
-			if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+			if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
 				return -1;
 			
 			char szItemInfo[MAX_TEXT_LENGTH];
@@ -159,20 +210,6 @@ public int PrisonersManagerHandler(Menu menu, MenuAction action, int iClient, in
 	return 0;
 }
 
-public void RandomAddSimon()
-{
-	int iRandom = JB_RandWarden();
-	if(iRandom != 0)
-		JB_AddSimon(iRandom);
-	else
-		RemoveSimon();
-}
-
-public void RemoveSimon()
-{
-	g_iSimon = 0;
-}
-
 /////////////////////////////////////////////////////////////
 ////////////////////////// NATIVES //////////////////////////
 /////////////////////////////////////////////////////////////
@@ -180,7 +217,7 @@ public void RemoveSimon()
 public int DisplaySimonMenu(Handle plugin, int argc)
 {
 	int iClient = GetNativeCell(1);
-	if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+	if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
 		return;
 	
 	Menu menu = new Menu(SimonMenuHandler, MENU_ACTIONS_ALL);
@@ -197,7 +234,7 @@ public int DisplaySimonMenu(Handle plugin, int argc)
 public int DisplayPrisonersManagerMenu(Handle plugin, int argc)
 {
 	int iClient = GetNativeCell(1);
-	if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+	if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
 		return;
 	
 	Menu menu = new Menu(PrisonersManagerHandler, MENU_ACTIONS_ALL);
@@ -215,11 +252,18 @@ public int AddSimon(Handle plugin, int argc)
 	int iClient = GetNativeCell(1);
 	g_iSimon = iClient;
 	FakeClientCommand(iClient, "menu");
+	
+	RefuseAutoSimonTimer();
+}
+
+public int RemoveSimon(Handle plugin, int argc)
+{
+	g_iSimon = 0;
 }
 
 public int GetSimon(Handle plugin, int argc)
 {
-	return g_iSimon
+	return g_iSimon;
 }
 
 public int IsSimon(Handle plugin, int argc)

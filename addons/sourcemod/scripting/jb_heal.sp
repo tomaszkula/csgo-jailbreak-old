@@ -7,6 +7,8 @@
 #define PLUGIN_DESCRIPTION ""
 #define PLUGIN_VERSION "1.0.0"
 
+bool g_bIsBlocked = true;
+
 public Plugin myinfo = 
 {
 	name = PLUGIN_NAME,
@@ -21,13 +23,22 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_ma
 	CreateNative("JB_DisplayHealMenu", DisplayHealMenu);
 }
 
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
+{
+	if(iOldDayMode == NORMAL)
+		g_bIsBlocked = true;
+	
+	if(iNewDayMode == NORMAL)
+		g_bIsBlocked = false;
+}
+
 public int HealMenuHandler(Menu menu, MenuAction action, int iClient, int iItem)
 {
 	switch(action)
 	{
 		case MenuAction_Select:
 		{
-			if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+			if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
 				return -1;
 			
 			char szItemInfo[MAX_TEXT_LENGTH];
@@ -65,7 +76,7 @@ public int HealMenuHandler(Menu menu, MenuAction action, int iClient, int iItem)
 public int DisplayHealMenu(Handle plugin, int argc)
 {
 	int iClient = GetNativeCell(1);
-	if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+	if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
 		return;
 	
 	Menu menu = CreateMenu(HealMenuHandler, MENU_ACTIONS_ALL);

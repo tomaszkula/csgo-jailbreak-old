@@ -16,7 +16,7 @@
 char g_szColors[][MAX_TEXT_LENGTH] = {"255 255 0", "255 0 255", "0 255 255", "255 255 255"}
 char g_szColorsNames[][MAX_TEXT_LENGTH] = {"żółty", "różowy", "aqua", "biały"}
 
-bool g_bIsDivided[MAXPLAYERS + 1];
+bool g_bIsBlocked = true, g_bIsDivided[MAXPLAYERS + 1];
 int g_iGlowEntity[MAXPLAYERS + 1];
 
 public Plugin myinfo = 
@@ -33,21 +33,35 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_ma
 	CreateNative("JB_DisplayDivideMenu", DisplayDivideMenu);
 }
 
-public void OnPluginStart()
-{
-	HookEvent("round_end", RoundEndEvent);
-	HookEvent("player_death", PlayerDeathEvent);
-}
-
 public void OnMapStart()
 {
 	for (int i = 1; i <= MaxClients; i++)
-		RemoveDivision(i);
+		if(IsDivided(i))
+			RemoveDivision(i);
 }
 
-public void OnClientDisconnect_Post(int iClient)
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
 {
-	RemoveDivision(iClient);
+	if(iOldDayMode == NORMAL)
+	{
+		g_bIsBlocked = true;
+		for (int i = 1; i <= MaxClients; i++)
+			if(IsDivided(i))
+				RemoveDivision(i);
+		
+		UnhookEvent("round_prestart", RoundPrestartEvent);
+		UnhookEvent("player_team", PlayerTeamEvent);
+		UnhookEvent("player_death", PlayerDeathEvent);
+	}
+	
+	if(iNewDayMode == NORMAL)
+	{
+		g_bIsBlocked = false;
+		
+		HookEvent("round_prestart", RoundPrestartEvent);
+		HookEvent("player_team", PlayerTeamEvent);
+		HookEvent("player_death", PlayerDeathEvent);
+	}
 }
 
 public void OnAddFreeDay(int iClient)
@@ -62,10 +76,24 @@ public void OnAddRebel(int iClient)
 		RemoveDivision(iClient);
 }
 
-public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
+public Action RoundPrestartEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	for (int i = 1; i <= MaxClients; i++)
-		RemoveDivision(i);
+		if(IsDivided(i))
+			RemoveDivision(i);
+	
+	return Plugin_Continue;
+}
+
+public Action PlayerTeamEvent(Event event, const char[] name, bool dontBroadcast)
+{
+	bool disconnected = event.GetBool("disconnect");
+	if(disconnected)
+	{
+		int iClient = GetClientOfUserId(event.GetInt("userid"));
+		if(IsDivided(iClient))
+			RemoveDivision(iClient);
+	}
 	
 	return Plugin_Continue;
 }
@@ -73,7 +101,6 @@ public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
 public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	int iVictim = GetClientOfUserId(event.GetInt("userid"));
-
 	if(IsDivided(iVictim))
 		RemoveDivision(iVictim);
 		
@@ -86,7 +113,7 @@ public int DivideMenuHandler(Menu menu, MenuAction action, int iClient, int iIte
 	{
 		case MenuAction_Select:
 		{
-			if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+			if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
 				return -1;
 			
 			char szItemInfo[MAX_TEXT_LENGTH];
@@ -149,10 +176,8 @@ public int DividePrisoners(int iTeamsCount)
 	else
 	{
 		for (int i = 1; i < MaxClients; i++)
-		{
 			if(IsDivided(i))
 				RemoveDivision(i);
-		}
 	}
 }
 
@@ -167,11 +192,9 @@ public void AddDivision(int iClient, int iColorType)
 public void RemoveDivision(int iClient)
 {
 	g_bIsDivided[iClient] = false;
-	if(g_iGlowEntity[iClient] != -1)
-	{
-		RemoveDynamicGlow(g_iGlowEntity[iClient]);
-		g_iGlowEntity[iClient] = -1;
-	}
+	
+	RemoveDynamicGlow(g_iGlowEntity[iClient]);
+	g_iGlowEntity[iClient] = -1;
 }
 
 public bool IsDivided(int iClient)
@@ -186,7 +209,7 @@ public bool IsDivided(int iClient)
 public int DisplayDivideMenu(Handle plugin, int argc)
 {
 	int iClient = GetNativeCell(1);
-	if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+	if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
 		return;
 	
 	Menu menu = CreateMenu(DivideMenuHandler, MENU_ACTIONS_ALL);

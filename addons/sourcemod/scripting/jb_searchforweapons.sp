@@ -11,6 +11,7 @@
 #define SEARCH_TIME 3
 
 int g_iSearchTarget[MAXPLAYERS + 1], g_iSearcher[MAXPLAYERS + 1];
+bool g_bIsBlocked = true;
 Handle g_hProgressBarTime, g_hSearchTimer[MAXPLAYERS + 1], g_hCheckDistanceTimer[MAXPLAYERS + 1];
 
 public Plugin myinfo = 
@@ -29,9 +30,6 @@ public void OnPluginStart()
 	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
 	g_hProgressBarTime = EndPrepSDKCall();
 	
-	HookEvent("round_end", RoundEndEvent);
-	HookEvent("player_death", PlayerDeathEvent);
-	
 	RegConsoleCmd("przeszukaj", SearchCmd);
 	RegConsoleCmd("search", SearchCmd);
 }
@@ -39,26 +37,48 @@ public void OnPluginStart()
 public void OnMapStart()
 {
 	for (int i = 1; i <= MaxClients; i++)
+		RefuseSearchForWeaponsTimer(i);
+}
+
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
+{
+	if(iOldDayMode == NORMAL)
 	{
-		if(g_hSearchTimer[i] != INVALID_HANDLE)
-			RefuseSearch(i);
+		g_bIsBlocked = true;
+		for (int i = 1; i <= MaxClients; i++)
+			RefuseSearchForWeaponsTimer(i);
+		
+		UnhookEvent("round_prestart", RoundPrestartEvent);
+		UnhookEvent("player_team", PlayerTeamEvent);
+		UnhookEvent("player_death", PlayerDeathEvent);
+	}
+	
+	if(iNewDayMode == NORMAL)
+	{
+		g_bIsBlocked = false;
+		
+		HookEvent("round_prestart", RoundPrestartEvent);
+		HookEvent("player_team", PlayerTeamEvent);
+		HookEvent("player_death", PlayerDeathEvent);
 	}
 }
 
-public void OnClientDisconnect_Post(int iClient)
-{
-	if(g_hSearchTimer[iClient] != INVALID_HANDLE)
-		RefuseSearch(iClient);
-	else if(g_iSearcher[iClient] != 0)
-		RefuseSearch(g_iSearcher[iClient]);
-}
-
-public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
+public Action RoundPrestartEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	for (int i = 1; i <= MaxClients; i++)
+		RefuseSearchForWeaponsTimer(i);
+	
+	return Plugin_Continue;
+}
+
+public Action PlayerTeamEvent(Event event, const char[] name, bool dontBroadcast)
+{
+	bool disconnected = event.GetBool("disconnect");
+	if(disconnected)
 	{
-		if(g_hSearchTimer[i] != INVALID_HANDLE)
-			RefuseSearch(i);
+		int iClient = GetClientOfUserId(event.GetInt("userid"));
+		RefuseSearchForWeaponsTimer(iClient);
+		RefuseSearchForWeaponsTimer(g_iSearcher[iClient]);
 	}
 	
 	return Plugin_Continue;
@@ -67,57 +87,13 @@ public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
 public Action PlayerDeathEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	int iVictim = GetClientOfUserId(event.GetInt("userid"));
-	
-	if(g_hSearchTimer[iVictim] != INVALID_HANDLE)
-		RefuseSearch(iVictim);
-	else if(g_iSearcher[iVictim] != 0)
-		RefuseSearch(g_iSearcher[iVictim]);
+	RefuseSearchForWeaponsTimer(iVictim);
+	RefuseSearchForWeaponsTimer(g_iSearcher[iVictim]);
 		
 	return Plugin_Continue;
 }
 
-public Action SearchCmd(int iClient, int args)
-{
-	if(!IsUserValid(iClient) || !IsPlayerAlive(iClient) || GetClientTeam(iClient) != CS_TEAM_CT)
-		return Plugin_Continue;
-		
-	int iTarget = TraceClientViewEntity(iClient);
-	if(!IsUserValid(iTarget) || !IsPlayerAlive(iTarget) || GetClientTeam(iTarget) != CS_TEAM_T)
-	{
-		PrintToChat(iClient, "%s Namierz więźnia, aby go przeszukać.", JB_PREFIX);
-		return Plugin_Continue;
-	}
-	
-	float vClientOrigin[3], vTargetOrigin[3];
-	GetClientAbsOrigin(iClient, vClientOrigin);
-	GetClientAbsOrigin(iTarget, vTargetOrigin);
-	float distance = GetVectorDistance(vClientOrigin, vTargetOrigin);
-	if(distance <= SEARCH_DISTANCE)
-	{
-		if(JB_HasFreeDay(iTarget))
-		{
-			PrintToChat(iClient, "%s Nie możesz przeszukać FreeDay'a.", JB_PREFIX);
-			return Plugin_Continue;
-		}
-		
-		g_iSearchTarget[iClient] = iTarget;
-		g_iSearcher[iTarget] = iClient;
-		
-		PrintCenterText(iClient, "PRZESZUKUJESZ WIĘŹNIA");
-		PrintCenterText(iTarget, "JESTEŚ PRZESZUKIWANY");
-		g_hCheckDistanceTimer[iClient] = CreateTimer(0.1, CheckDistanceTimer, iClient, TIMER_REPEAT);
-		SetEntityFlags(iTarget, (GetEntityFlags(iTarget) | FL_ATCONTROLS));
-		SDKCall(g_hProgressBarTime, iClient, SEARCH_TIME);
-		SDKCall(g_hProgressBarTime, iTarget, SEARCH_TIME);
-		g_hSearchTimer[iClient] = CreateTimer(float(SEARCH_TIME), SearchTimer, iClient);
-	}
-	else
-		PrintToChat(iClient, "%s Musisz podejść bliżej, by przeszukać więźnia.", JB_PREFIX);
-	
-	return Plugin_Continue;
-}
-
-public Action SearchTimer(Handle timer, any iClient)
+public Action SearchForWeaponsTimer(Handle timer, int iClient)
 {
 	g_hSearchTimer[iClient] = INVALID_HANDLE;
 	
@@ -151,12 +127,12 @@ public Action CheckDistanceTimer(Handle timer, any iClient)
 	GetClientAbsOrigin(iTarget, vTargetOrigin);
 	float distance = GetVectorDistance(vClientOrigin, vTargetOrigin);
 	if(distance > SEARCH_DISTANCE)
-		RefuseSearch(iClient);
+		RefuseSearchForWeaponsTimer(iClient);
 	
 	return Plugin_Continue;
 }
 
-public void StopSearch(int iClient, int iTarget)
+void StopSearch(int iClient, int iTarget)
 {
 	KillTimer(g_hCheckDistanceTimer[iClient]);
 	g_hCheckDistanceTimer[iClient] = INVALID_HANDLE;
@@ -169,10 +145,54 @@ public void StopSearch(int iClient, int iTarget)
 	g_iSearcher[iTarget] = 0;
 }
 
-public void RefuseSearch(int iClient)
+void RefuseSearchForWeaponsTimer(int iClient)
 {
-	KillTimer(g_hSearchTimer[iClient]);
-	g_hSearchTimer[iClient] = INVALID_HANDLE;
+	if(g_hSearchTimer[iClient] != INVALID_HANDLE)
+	{
+		KillTimer(g_hSearchTimer[iClient]);
+		g_hSearchTimer[iClient] = INVALID_HANDLE;
+		
+		StopSearch(iClient, g_iSearchTarget[iClient]);
+	}
+}
+
+public Action SearchCmd(int iClient, int args)
+{
+	if(g_bIsBlocked || !IsUserValid(iClient) || !IsPlayerAlive(iClient) || GetClientTeam(iClient) != CS_TEAM_CT)
+		return Plugin_Continue;
+		
+	int iTarget = TraceClientViewEntity(iClient);
+	if(!IsUserValid(iTarget) || !IsPlayerAlive(iTarget) || GetClientTeam(iTarget) != CS_TEAM_T)
+	{
+		PrintToChat(iClient, "%s Namierz więźnia, aby go przeszukać.", JB_PREFIX);
+		return Plugin_Continue;
+	}
 	
-	StopSearch(iClient, g_iSearchTarget[iClient]);
+	float vClientOrigin[3], vTargetOrigin[3];
+	GetClientAbsOrigin(iClient, vClientOrigin);
+	GetClientAbsOrigin(iTarget, vTargetOrigin);
+	float distance = GetVectorDistance(vClientOrigin, vTargetOrigin);
+	if(distance <= SEARCH_DISTANCE)
+	{
+		/*if(JB_HasFreeDay(iTarget))
+		{
+			PrintToChat(iClient, "%s Nie możesz przeszukać FreeDay'a.", JB_PREFIX);
+			return Plugin_Continue;
+		}*/
+		
+		g_iSearchTarget[iClient] = iTarget;
+		g_iSearcher[iTarget] = iClient;
+		
+		PrintToChat(iClient, "PRZESZUKUJESZ WIĘŹNIA");
+		PrintToChat(iTarget, "JESTEŚ PRZESZUKIWANY");
+		g_hCheckDistanceTimer[iClient] = CreateTimer(0.1, CheckDistanceTimer, iClient, TIMER_REPEAT);
+		SetEntityFlags(iTarget, (GetEntityFlags(iTarget) | FL_ATCONTROLS));
+		SDKCall(g_hProgressBarTime, iClient, SEARCH_TIME);
+		SDKCall(g_hProgressBarTime, iTarget, SEARCH_TIME);
+		g_hSearchTimer[iClient] = CreateTimer(float(SEARCH_TIME), SearchForWeaponsTimer, iClient);
+	}
+	else
+		PrintToChat(iClient, "%s Musisz podejść bliżej, by przeszukać więźnia.", JB_PREFIX);
+	
+	return Plugin_Continue;
 }

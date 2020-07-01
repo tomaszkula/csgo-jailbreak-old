@@ -1,0 +1,10 @@
+vertexlitgeneric
+{
+
+	$baseTexture "models/player/kuristaja/jailbreak/guard4/femalecop_eyelashes"
+	//$bumpmap "models/player/kuristaja/jailbreak/guard4/femalecop_eyelashes"
+	$translucent 1
+	$no_draw 1
+
+
+}

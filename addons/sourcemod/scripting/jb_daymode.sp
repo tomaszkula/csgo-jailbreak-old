@@ -76,7 +76,7 @@ public int GetDayModeName(Handle plugin, int argc)
 	{
 		case NONE: szDayModeName = "BRAK";
 		case WARM_UP: szDayModeName = "ROZGRZEWKA";
-		case GAME: szDayModeName = "LOSOWE ZABAWY";
+		case GAME: szDayModeName = "LOSOWA ZABAWA";
 		case NORMAL: szDayModeName = "NORMALNY";
 	}
 	

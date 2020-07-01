@@ -1,0 +1,19 @@
+"VertexLitGeneric"
+{
+	"$baseTexture" "models/player/kuristaja/jailbreak/prisoner7/murphy_hospital_clothes_d"
+   	"$bumpmap"    "models/player/kuristaja/jailbreak/prisoner7/murphy_hospital_clothes_normal"
+
+	"$phong" "1"
+
+	"$phongexponent" "20"
+	"$phongboost" ".02"
+	"$phongfresnelranges" "[5 6 8]"
+	"$PhongAlbedoTint" "1"
+
+	"$detail" "models\player\kuristaja\jailbreak\prisoner7\prisonerskin_detail"
+	"$detailscale"        "8"
+	"$detailblendfactor"  ".5"
+	"$detailblendmode"    "0"
+}
+
+

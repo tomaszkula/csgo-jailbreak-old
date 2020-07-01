@@ -24,15 +24,15 @@ public Plugin myinfo =
 public void OnPluginStart()
 {
 	g_hMainHud = CreateHudSynchronizer();
-	//g_hPrisonersInfoHud = CreateHudSynchronizer();
-	//g_hCurrencyHud = CreateHudSynchronizer();
+	g_hCurrencyHud = CreateHudSynchronizer();
+	g_hPrisonersInfoHud = CreateHudSynchronizer();
 }
 
 public void OnMapStart()
 {
 	CreateTimer(1.0, MainHudTimer, _, TIMER_REPEAT);
-	//CreateTimer(1.0, UpdatePrisonersInfoTimer, _, TIMER_REPEAT);
-	//CreateTimer(1.0, UpdateCurrencyTimer, _, TIMER_REPEAT);
+	CreateTimer(1.0, UpdateCurrencyTimer, _, TIMER_REPEAT);
+	CreateTimer(1.0, UpdatePrisonersInfoTimer, _, TIMER_REPEAT);
 }
 
 public void OnDayMode(int iOldDayMode, int iNewDayMode)
@@ -76,7 +76,7 @@ public Action MainHudTimer(Handle timer)
 		}
 		else if(g_iDayMode == NORMAL)
 		{
-			int iSimon = 0///JB_GetSimon();
+			int iSimon = JB_GetSimon();
 			
 			char szSimonNameInfo[MAX_TEXT_LENGTH];
 			if(iSimon == 0)
@@ -94,7 +94,7 @@ public Action MainHudTimer(Handle timer)
 		}
 	}
 	
-	SetHudTextParams(0.16, 0.03, 1.1, 255, 255, 110, 0);
+	SetHudTextParams(0.16, 0.03, 1.5, 255, 255, 110, 0);
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if(!IsUserValid(i))
@@ -106,7 +106,21 @@ public Action MainHudTimer(Handle timer)
 	return Plugin_Continue;
 }
 
-/*public Action UpdatePrisonersInfoTimer(Handle timer)
+public Action UpdateCurrencyTimer(Handle timer)
+{
+	SetHudTextParams(0.25, 0.96, 1.1, 255, 255, 110, 0);
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if(!IsUserValid(i))
+			continue;
+		
+		ShowSyncHudText(i, g_hCurrencyHud, "%i $", JB_GetCurrency(i));
+	}
+	
+	return Plugin_Continue;
+}
+
+public Action UpdatePrisonersInfoTimer(Handle timer)
 {
 	char szFormatFreeDay[MAX_TEXT_LENGTH] = "[ FreeDay'e ]", szFormatRebel[MAX_TEXT_LENGTH] = "[ Buntownicy ]", szClientName[MAX_TEXT_LENGTH];
 	int iFreeDayCount = 0, iRebelCount = 0;
@@ -146,7 +160,7 @@ public Action MainHudTimer(Handle timer)
 			Format(szFullFormat, sizeof(szFullFormat), "%s\n\n%s", szFormatFreeDay, szFormatRebel);
 	}
 	
-	SetHudTextParams(0.5, 0.06, 1.1, 255, 255, 110, 0);
+	SetHudTextParams(0.5, 0.08, 1.1, 255, 255, 110, 0);
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if(!IsUserValid(i))
@@ -157,17 +171,3 @@ public Action MainHudTimer(Handle timer)
 	
 	return Plugin_Continue;
 }
-
-public Action UpdateCurrencyTimer(Handle timer)
-{
-	SetHudTextParams(0.25, 0.96, 1.1, 255, 255, 110, 0);
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if(!IsUserValid(i))
-			continue;
-		
-		ShowSyncHudText(i, g_hCurrencyHud, "%i $", JB_GetCurrency(i));
-	}
-	
-	return Plugin_Continue;
-}*/

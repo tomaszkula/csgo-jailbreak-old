@@ -9,8 +9,9 @@
 #define PLUGIN_VERSION "1.0.0"
 
 int g_iBeamSprite;
-bool g_bIsPainting[MAXPLAYERS + 1];
+bool g_bIsBlocked = true, g_bIsPainting[MAXPLAYERS + 1];
 float g_fLastPosition[MAXPLAYERS + 1][3];
+Handle g_hPaintTimer;
 
 public Plugin myinfo = 
 {
@@ -23,11 +24,6 @@ public Plugin myinfo =
 
 public OnPluginStart()
 {
-	HookEvent("round_end", RoundEndEvent);
-	HookEvent("player_death", PlayerDeathEvent);
-	
-	CreateTimer(0.1, PaintTimer, _, TIMER_REPEAT);
-	
 	RegConsoleCmd("+maluj", PaintCmd);
 	RegConsoleCmd("-maluj", PaintCmd);
 }
@@ -40,15 +36,51 @@ public void OnMapStart()
 		g_bIsPainting[i] = false;
 }
 
-public void OnClientDisconnect_Post(int iClient)
+public void OnDayMode(int iOldDayMode, int iNewDayMode)
 {
-	g_bIsPainting[iClient] = false;
+	if(iOldDayMode == NORMAL)
+	{
+		g_bIsBlocked = true;
+		if(g_hPaintTimer != INVALID_HANDLE)
+		{
+			KillTimer(g_hPaintTimer);
+			g_hPaintTimer = INVALID_HANDLE;
+		}
+		for (int i = 1; i <= MaxClients; i++)
+			g_bIsPainting[i] = false;
+		
+		UnhookEvent("round_prestart", RoundPrestartEvent);
+		UnhookEvent("player_team", PlayerTeamEvent);
+		UnhookEvent("player_death", PlayerDeathEvent);
+	}
+	
+	if(iNewDayMode == NORMAL)
+	{
+		g_bIsBlocked = false;
+		g_hPaintTimer = CreateTimer(0.1, PaintTimer, _, TIMER_REPEAT);
+		
+		HookEvent("round_prestart", RoundPrestartEvent);
+		HookEvent("player_team", PlayerTeamEvent);
+		HookEvent("player_death", PlayerDeathEvent);
+	}
 }
 
-public Action RoundEndEvent(Event event, const char[] name, bool dontBroadcast)
+public Action RoundPrestartEvent(Event event, const char[] name, bool dontBroadcast)
 {
 	for (int i = 1; i <= MaxClients; i++)
 		g_bIsPainting[i] = false;
+	
+	return Plugin_Continue;
+}
+
+public Action PlayerTeamEvent(Event event, const char[] name, bool dontBroadcast)
+{
+	bool disconnected = event.GetBool("disconnect");
+	if(disconnected)
+	{
+		int iClient = GetClientOfUserId(event.GetInt("userid"));
+		g_bIsPainting[iClient] = false;
+	}
 	
 	return Plugin_Continue;
 }
@@ -66,7 +98,7 @@ public Action PaintTimer(Handle timer)
 	float fPos[3];
 	for(int i = 1; i <= MaxClients; i++) 
 	{
-		if(!IsUserValid(i) || !JB_IsSimon(i) || !g_bIsPainting[i])
+		if(g_bIsBlocked || !IsUserValid(i) || !JB_IsSimon(i) || !g_bIsPainting[i])
 			continue;
 			
 		TraceClientViewPosition(i, fPos);
@@ -89,7 +121,7 @@ public Action PaintTimer(Handle timer)
 
 public Action PaintCmd(int iClient, int args)
 {
-	if(!IsUserValid(iClient) || !JB_IsSimon(iClient))
+	if(g_bIsBlocked || !IsUserValid(iClient) || !JB_IsSimon(iClient))
 		return Plugin_Handled;
 	
 	char szCommand[MAX_TEXT_LENGTH];

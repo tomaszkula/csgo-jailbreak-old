@@ -4,6 +4,7 @@
 #define JB_PREFIX " \x04[JB]\x01"
 
 #define MAX_TEXT_LENGTH 512
+#define MAX_SKINS_COUNT 16
 
 #define EF_BONEMERGE (1 << 0)
 #define EF_NOSHADOWS (1 << 4)
@@ -68,7 +69,10 @@ native void JB_OpenCells();
 
 
 // Get simon client id
-native int JB_AddSimon(int iClient);
+native void JB_AddSimon(int iClient);
+
+// Removes simon
+native void JB_RemoveSimon();
 
 // Get simon client id
 native int JB_GetSimon();
